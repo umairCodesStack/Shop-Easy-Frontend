@@ -1,111 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useCart } from "../context/cartContext";
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadCart();
-  }, []);
-
-  const loadCart = () => {
-    setLoading(true);
-
-    // Simulate loading cart from localStorage or API
-    // Replace with actual cart data from your backend
-    const mockCartItems = [
-      {
-        id: 1,
-        name: "Wireless Noise Cancelling Headphones",
-        price: 79.99,
-        originalPrice: 129.99,
-        quantity: 2,
-        size: "Medium",
-        color: "Black",
-        image:
-          "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop",
-        storeName: "TechVault Store",
-        storeId: 1,
-        inStock: true,
-        stockCount: 45,
-      },
-      {
-        id: 2,
-        name: "Smart Fitness Watch Pro",
-        price: 199.99,
-        originalPrice: 299.99,
-        quantity: 1,
-        size: "Large",
-        color: "Silver",
-        image:
-          "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
-        storeName: "Gadget Hub",
-        storeId: 2,
-        inStock: true,
-        stockCount: 20,
-      },
-      {
-        id: 3,
-        name: "Premium Running Shoes",
-        price: 89.99,
-        originalPrice: 149.99,
-        quantity: 1,
-        size: "X-Large",
-        color: "Blue",
-        image:
-          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
-        storeName: "Sports Arena",
-        storeId: 3,
-        inStock: true,
-        stockCount: 15,
-      },
-    ];
-
-    // Simulate API delay
-    setTimeout(() => {
-      setCartItems(mockCartItems);
-      setLoading(false);
-    }, 500);
-  };
-
-  const updateQuantity = (itemId, newQuantity) => {
-    if (newQuantity < 1) return;
-
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: Math.min(newQuantity, item.stockCount) }
-          : item,
-      ),
-    );
-  };
-
-  const removeItem = (itemId) => {
-    if (
-      window.confirm("Are you sure you want to remove this item from cart?")
-    ) {
-      setCartItems((prevItems) =>
-        prevItems.filter((item) => item.id !== itemId),
-      );
-    }
-  };
-
-  const clearCart = () => {
-    if (window.confirm("Are you sure you want to clear your entire cart?")) {
-      setCartItems([]);
-    }
-  };
+  const {
+    cartItems,
+    removeFromCart: removeItem,
+    updateQuantity,
+    clearCart,
+    getCartTotal,
+    getCartCount,
+  } = useCart();
 
   const calculateSubtotal = () => {
-    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return cartItems.reduce(
+      (sum, item) => sum + item.finalPrice * item.quantity,
+      0,
+    );
   };
 
   const calculateSavings = () => {
     return cartItems.reduce((sum, item) => {
       if (item.originalPrice) {
-        return sum + (item.originalPrice - item.price) * item.quantity;
+        return sum + (item.originalPrice - item.finalPrice) * item.quantity;
       }
       return sum;
     }, 0);
@@ -131,15 +49,6 @@ const CartPage = () => {
     }
     navigate("/checkout");
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-gray-600 font-medium">Loading your cart...</p>
-      </div>
-    );
-  }
 
   // Empty Cart State
   if (cartItems.length === 0) {
@@ -262,7 +171,9 @@ const CartPage = () => {
                           className="flex-shrink-0"
                         >
                           <img
-                            src={item.image}
+                            src={
+                              item.imageUrl || "https://via.placeholder.com/400"
+                            }
                             alt={item.name}
                             className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-primary-500 transition-colors duration-300"
                           />
@@ -298,7 +209,7 @@ const CartPage = () => {
                             {/* Price */}
                             <div className="flex items-baseline gap-3">
                               <span className="text-2xl font-bold text-primary-600">
-                                ${item.price}
+                                ${item.finalPrice}
                               </span>
                               {item.originalPrice && (
                                 <span className="text-lg text-gray-400 line-through">
@@ -315,6 +226,7 @@ const CartPage = () => {
                                   onClick={() =>
                                     updateQuantity(item.id, item.quantity - 1)
                                   }
+                                  disabled={item.quantity <= 1}
                                   className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition-colors duration-300 font-bold"
                                 >
                                   -
@@ -326,7 +238,7 @@ const CartPage = () => {
                                   onClick={() =>
                                     updateQuantity(item.id, item.quantity + 1)
                                   }
-                                  disabled={item.quantity >= item.stockCount}
+                                  disabled={item.quantity >= item.stockQuantity}
                                   className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition-colors duration-300 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   +
@@ -370,7 +282,7 @@ const CartPage = () => {
                               Item Total:{" "}
                             </span>
                             <span className="text-xl font-bold text-gray-900">
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ${(item.finalPrice * item.quantity).toFixed(2)}
                             </span>
                           </div>
                         </div>

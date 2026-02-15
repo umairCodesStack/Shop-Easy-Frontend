@@ -1,11 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useCart } from "../../context/cartContext";
 
 const ProductCard = ({ product }) => {
+  const { addToCart } = useCart();
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    alert("Product added to cart!");
+    addToCart(product);
+
     // TODO: Implement cart functionality later
   };
 

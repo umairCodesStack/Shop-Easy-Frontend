@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import ProductCard from "../components/products/ProductCard";
 import { useTrendingProduct } from "../components/products/useTrendingProduct";
 import useHotDealsProduct from "../components/products/useHotDealsProduct";
+import useGetCategories from "../hooks/useGetCatagories";
+import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON } from "../utils/CatagoreyIcons";
 
 const Home = () => {
   const {
@@ -15,18 +17,28 @@ const Home = () => {
     isLoading: isLoadingHotDeals,
     error: errorHotDeals,
   } = useHotDealsProduct();
-  console.log("HOt Deals Product in Home.jsx:", hotDealsProduct);
-  const categoriesData = [
-    { id: 1, name: "Electronics", icon: "💻", count: 2345 },
-    { id: 2, name: "Fashion", icon: "👗", count: 4567 },
-    { id: 3, name: "Home & Garden", icon: "🏡", count: 1890 },
-    { id: 4, name: "Sports", icon: "⚽", count: 987 },
-    { id: 5, name: "Books", icon: "📚", count: 3456 },
-    { id: 6, name: "Toys", icon: "🧸", count: 876 },
-    { id: 7, name: "Beauty", icon: "💄", count: 1234 },
-    { id: 8, name: "Automotive", icon: "🚗", count: 654 },
-  ];
+  const {
+    data: categories,
+    isLoading: isLoadingCategories,
+    error: errorCategories,
+  } = useGetCategories();
+  console.log("Categories from API:", categories);
 
+  const categoriesData =
+    categories?.map((categoryName) => {
+      const cleanName = categoryName.toLowerCase().trim(); // Add .trim() here!
+      console.log(
+        "Mapping category:",
+        categoryName,
+        "Icon:",
+        CATEGORY_ICONS[cleanName],
+      );
+      return {
+        id: cleanName.replace(/\s+/g, "-"),
+        name: categoryName.trim(), // Also trim the display name
+        icon: CATEGORY_ICONS[cleanName] || DEFAULT_CATEGORY_ICON,
+      };
+    }) || [];
   // Top Vendors
   const topVendorsData = [
     {
@@ -162,9 +174,9 @@ const Home = () => {
                       <h3 className="font-semibold text-gray-900 text-sm whitespace-nowrap group-hover:text-primary-600 transition-colors">
                         {category.name}
                       </h3>
-                      <p className="text-xs text-gray-500">
+                      {/* <p className="text-xs text-gray-500">
                         {category.count.toLocaleString()}
-                      </p>
+                      </p> */}
                     </div>
                   </div>
                 </Link>

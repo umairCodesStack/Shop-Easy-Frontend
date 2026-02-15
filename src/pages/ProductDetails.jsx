@@ -1,104 +1,133 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import useGetProductById from "../hooks/useGetProductById";
+
+// Helper function to get color name from hex value
+const getColorName = (hex) => {
+  const colorMap = {
+    "#000000": "Black",
+    "#FFFFFF": "White",
+    "#C0C0C0": "Silver",
+    "#808080": "Gray",
+    "#FF0000": "Red",
+    "#0000FF": "Blue",
+    "#00FF00": "Green",
+    "#FFFF00": "Yellow",
+    "#FFA500": "Orange",
+    "#800080": "Purple",
+    "#FFC0CB": "Pink",
+    "#A52A2A": "Brown",
+    "#FFD700": "Gold",
+    "#00FFFF": "Cyan",
+    "#FF00FF": "Magenta",
+    "#0066CC": "Blue",
+    "#CC0000": "Red",
+    "#D4C5B9": "Beige",
+    "#1E3A8A": "Navy",
+    "#EC4899": "Pink",
+    "#92400E": "Brown",
+    "#6B7280": "Gray",
+  };
+
+  return colorMap[hex.toUpperCase()] || hex;
+};
+
+// Helper function to convert hex array to color objects
+const convertColorsToObjects = (colorsArray) => {
+  if (!colorsArray || colorsArray.length === 0) return [];
+
+  return colorsArray.map((hex) => ({
+    name: getColorName(hex),
+    hex: hex,
+  }));
+};
+
+// Helper function to generate mock sizes based on category
+const getMockSizes = (category) => {
+  const categoryLower = category?.toLowerCase().trim();
+
+  if (categoryLower === "fashion") {
+    return ["XS", "S", "M", "L", "XL", "XXL"];
+  }
+
+  // No sizes for electronics, home, etc.
+  return [];
+};
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
 
-  useEffect(() => {
-    loadProductDetails();
-  }, [id]);
+  const { data: apiProduct, isLoading, error } = useGetProductById(id);
 
-  const loadProductDetails = async () => {
-    setLoading(true);
+  // Merge API data with mock data for sections not yet available in API
+  const product = apiProduct
+    ? {
+        ...apiProduct,
+        price: apiProduct.finalPrice,
+        images: apiProduct.imageUrls || [],
+        inStock: apiProduct.stockQuantity > 0,
+        stockCount: apiProduct.stockQuantity,
 
-    // Simulate API call - Replace with your actual backend API
-    setTimeout(() => {
-      const mockProduct = {
-        id: parseInt(id),
-        name: "Wireless Noise Cancelling Headphones Premium",
-        price: 79.99,
-        originalPrice: 129.99,
-        discount: 38,
-        rating: 4.5,
-        totalReviews: 1234,
-        soldCount: 5420,
-        storeName: "TechVault Store",
+        // Convert API colors from hex strings to objects
+        colors: convertColorsToObjects(apiProduct.colors),
+
+        // Use API sizes if available, otherwise use mock sizes
+        sizes:
+          apiProduct.sizes && apiProduct.sizes.length > 0
+            ? apiProduct.sizes
+            : getMockSizes(apiProduct.category),
+
+        // Mock data for store (until API provides it)
         storeId: 1,
         storeRating: 4.8,
-        category: "Electronics",
-        sku: "WH-1000XM5",
-        inStock: true,
-        stockCount: 45,
+        //soldCount: Math.floor(Math.random() * 5000) + 1000,
+        totalReviews: apiProduct.reviewsCount || 234,
 
-        // Multiple Images
-        images: [
-          "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=800&fit=crop",
-          "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&h=800&fit=crop",
-          "https://images.unsplash.com/photo-1487215078519-e21cc028cb29?w=800&h=800&fit=crop",
-          "https://images.unsplash.com/photo-1524678606370-a47ad25cb82a?w=800&h=800&fit=crop",
-          "https://images.unsplash.com/photo-1545127398-14699f92334b?w=800&h=800&fit=crop",
-        ],
+        // Mock expanded description and features
+        expandedDescription:
+          apiProduct.description ||
+          "This is a premium quality product designed to meet your needs. Perfect for everyday use with excellent durability and performance.",
 
-        // Sizes (if applicable)
-        sizes: ["Small", "Medium", "Large", "X-Large"],
-
-        // Colors
-        colors: [
-          { name: "Black", hex: "#000000" },
-          { name: "Silver", hex: "#C0C0C0" },
-          { name: "Blue", hex: "#0066CC" },
-          { name: "Red", hex: "#CC0000" },
-        ],
-
-        // Description
-        description: `Experience premium sound quality with our wireless noise-cancelling headphones. 
-        Featuring industry-leading Active Noise Cancellation (ANC), these headphones deliver an immersive 
-        audio experience whether you're traveling, working, or relaxing. With up to 30 hours of battery 
-        life and comfortable over-ear design, you can enjoy your music all day long.`,
-
-        // Features
         features: [
-          "Industry-leading Active Noise Cancellation",
-          "30-hour battery life with quick charging",
-          "Premium sound quality with LDAC codec",
-          "Comfortable over-ear design with plush cushions",
-          "Bluetooth 5.0 with multipoint connection",
-          "Built-in Alexa and Google Assistant",
-          "Foldable design with carrying case",
-          "Touch sensor controls",
+          "High-quality materials and construction",
+          "Durable and long-lasting",
+          "Easy to use and maintain",
+          "Excellent value for money",
+          "Backed by manufacturer warranty",
         ],
 
-        // Specifications
+        // Mock specifications
         specifications: {
-          Brand: "TechVault",
-          Model: "WH-1000XM5",
-          "Color Options": "Black, Silver, Blue, Red",
-          Connectivity: "Bluetooth 5.0, 3.5mm Jack",
-          "Battery Life": "30 hours",
-          "Charging Time": "3 hours (Quick charge: 10 min = 5 hours)",
-          Weight: "250g",
-          "Driver Unit": "40mm",
-          "Frequency Response": "4Hz - 40,000Hz",
-          Impedance: "47 ohms",
+          Brand: apiProduct.storeName || "Shop-Easy",
+          "Product Name": apiProduct.name,
+          Category: apiProduct.category?.trim(),
+          SKU: `SKU-${apiProduct.id}`,
+          "In Stock": apiProduct.stockQuantity > 0 ? "Yes" : "No",
+          "Stock Quantity": apiProduct.stockQuantity,
+          Price: `$${apiProduct.finalPrice}`,
+          ...(apiProduct.originalPrice && apiProduct.discount
+            ? {
+                "Original Price": `$${apiProduct.originalPrice}`,
+                Discount: `${apiProduct.discount}%`,
+              }
+            : {}),
           Warranty: "1 Year Manufacturer Warranty",
         },
 
-        // Shipping Info
+        // Mock shipping info
         shippingInfo: {
           freeShipping: true,
           estimatedDelivery: "3-5 business days",
           returnPolicy: "30-day return policy",
         },
 
-        // Reviews
+        // Mock reviews
         reviews: [
           {
             id: 1,
@@ -106,9 +135,9 @@ const ProductDetails = () => {
             userAvatar: "👨",
             rating: 5,
             date: "2024-01-15",
-            title: "Excellent noise cancellation!",
+            title: "Excellent product!",
             comment:
-              "These headphones are amazing! The noise cancellation works perfectly on flights and in busy offices. Sound quality is superb and they're very comfortable for long listening sessions.",
+              "Really happy with this purchase. Quality is great and it works exactly as described. Highly recommend!",
             verified: true,
             helpful: 45,
           },
@@ -118,9 +147,9 @@ const ProductDetails = () => {
             userAvatar: "👩",
             rating: 4,
             date: "2024-01-10",
-            title: "Great sound, minor connectivity issues",
+            title: "Good value for money",
             comment:
-              "Love the sound quality and comfort. Had some minor Bluetooth connectivity issues initially but firmware update fixed it. Battery life is fantastic!",
+              "Good product overall. Does what it's supposed to do. Only minor issue was delivery took a bit longer than expected.",
             verified: true,
             helpful: 32,
           },
@@ -130,27 +159,15 @@ const ProductDetails = () => {
             userAvatar: "👨‍💼",
             rating: 5,
             date: "2024-01-05",
-            title: "Best headphones I've ever owned",
+            title: "Best purchase this year",
             comment:
-              "Worth every penny! The ANC is incredible, completely blocks out airplane noise. Comfortable for all-day wear and the sound quality is top-notch.",
+              "Absolutely love it! Exceeded my expectations. Will definitely buy from this store again.",
             verified: true,
             helpful: 28,
           },
-          {
-            id: 4,
-            userName: "Emily Chen",
-            userAvatar: "👩‍💻",
-            rating: 4,
-            date: "2023-12-28",
-            title: "Excellent for work from home",
-            comment:
-              "Perfect for blocking out distractions while working. Great for video calls too. Only wish they came in more color options.",
-            verified: false,
-            helpful: 15,
-          },
         ],
 
-        // Rating Distribution
+        // Mock rating distribution
         ratingDistribution: {
           5: 850,
           4: 280,
@@ -158,26 +175,32 @@ const ProductDetails = () => {
           2: 20,
           1: 14,
         },
-      };
+      }
+    : null;
 
-      setProduct(mockProduct);
-      setSelectedColor(mockProduct.colors[0].name);
-      setSelectedSize(mockProduct.sizes[0]);
-      setLoading(false);
-    }, 1000);
-  };
+  // Set default selections when product loads
+  useEffect(() => {
+    if (product) {
+      if (product.colors?.length > 0) {
+        setSelectedColor(product.colors[0].name);
+      }
+      if (product.sizes?.length > 0) {
+        setSelectedSize(product.sizes[0]);
+      }
+    }
+  }, [apiProduct]);
 
   const handleAddToCart = () => {
-    if (!selectedSize) {
+    if (product.sizes?.length > 0 && !selectedSize) {
       alert("Please select a size");
       return;
     }
-    if (!selectedColor) {
+    if (product.colors?.length > 0 && !selectedColor) {
       alert("Please select a color");
       return;
     }
     alert(
-      `Added to cart: ${quantity} x ${product.name} (${selectedSize}, ${selectedColor})`,
+      `Added to cart: ${quantity} x ${product.name}${selectedSize ? ` (${selectedSize})` : ""}${selectedColor ? ` (${selectedColor})` : ""}`,
     );
     // TODO: Implement actual cart functionality
   };
@@ -208,7 +231,7 @@ const ProductDetails = () => {
     return Math.round((product.ratingDistribution[star] / total) * 100);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
@@ -219,13 +242,16 @@ const ProductDetails = () => {
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <span className="text-6xl mb-4">😔</span>
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
           Product Not Found
         </h2>
+        <p className="text-gray-600 mb-6">
+          {error ? "Error loading product" : "This product doesn't exist"}
+        </p>
         <Link
           to="/products"
           className="bg-primary-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-600"
@@ -251,10 +277,10 @@ const ProductDetails = () => {
             </Link>
             <span>›</span>
             <Link
-              to={`/products?category=${product.category.toLowerCase()}`}
+              to={`/products?category=${product.category?.trim().toLowerCase()}`}
               className="hover:text-primary-600"
             >
-              {product.category}
+              {product.category?.trim()}
             </Link>
             <span>›</span>
             <span className="text-gray-900 font-medium truncate">
@@ -271,65 +297,80 @@ const ProductDetails = () => {
           <div>
             {/* Main Image */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-4 relative group">
-              <img
-                src={product.images[selectedImage]}
-                alt={product.name}
-                className="w-full h-[500px] object-cover"
-              />
-              {product.discount && (
-                <div className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-lg shadow-lg">
-                  -{product.discount}% OFF
-                </div>
-              )}
-
-              {/* Image Navigation Arrows */}
-              {product.images.length > 1 && (
+              {product.images.length > 0 ? (
                 <>
-                  <button
-                    onClick={() =>
-                      setSelectedImage(
-                        (selectedImage - 1 + product.images.length) %
-                          product.images.length,
-                      )
-                    }
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
-                  >
-                    ←
-                  </button>
-                  <button
-                    onClick={() =>
-                      setSelectedImage(
-                        (selectedImage + 1) % product.images.length,
-                      )
-                    }
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
-                  >
-                    →
-                  </button>
+                  <img
+                    src={product.images[selectedImage]}
+                    alt={product.name}
+                    className="w-full h-[500px] object-cover"
+                  />
+                  {product.discount > 0 && (
+                    <div className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-lg shadow-lg">
+                      -{product.discount}% OFF
+                    </div>
+                  )}
+                  {product.tag && (
+                    <div className="absolute top-4 left-4 bg-green-500 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
+                      {product.tag}
+                    </div>
+                  )}
+
+                  {/* Image Navigation Arrows */}
+                  {product.images.length > 1 && (
+                    <>
+                      <button
+                        onClick={() =>
+                          setSelectedImage(
+                            (selectedImage - 1 + product.images.length) %
+                              product.images.length,
+                          )
+                        }
+                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onClick={() =>
+                          setSelectedImage(
+                            (selectedImage + 1) % product.images.length,
+                          )
+                        }
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
+                      >
+                        →
+                      </button>
+                    </>
+                  )}
                 </>
+              ) : (
+                <div className="w-full h-[500px] bg-gray-200 flex items-center justify-center">
+                  <span className="text-6xl">📦</span>
+                </div>
               )}
             </div>
 
             {/* Thumbnail Images */}
-            <div className="grid grid-cols-5 gap-2">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`relative rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                    selectedImage === index
-                      ? "border-primary-500 scale-95"
-                      : "border-gray-200 hover:border-primary-300"
-                  }`}
-                >
-                  <img
-                    src={image}
-                    alt={`${product.name} ${index + 1}`}
-                    className="w-full h-20 object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            {product.images.length > 1 && (
+              <div className="grid grid-cols-5 gap-2">
+                {product.images.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`relative rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+                      selectedImage === index
+                        ? "border-primary-500 scale-95"
+                        : "border-gray-200 hover:border-primary-300"
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt={`${product.name} ${index + 1}`}
+                      className="w-full h-20 object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -378,25 +419,25 @@ const ProductDetails = () => {
               <button className="text-primary-600 hover:underline font-medium">
                 {product.totalReviews} Reviews
               </button>
-              <span className="text-gray-400">|</span>
-              <span className="text-gray-600">{product.soldCount} Sold</span>
+              {/* <span className="text-gray-400">|</span> */}
+              {/* <span className="text-gray-600">{product.soldCount} Sold</span> */}
             </div>
 
             {/* Price */}
             <div className="mb-6">
               <div className="flex items-baseline gap-4 mb-2">
                 <span className="text-4xl font-bold text-primary-600">
-                  ${product.price}
+                  ${product.price.toFixed(2)}
                 </span>
-                {product.originalPrice && (
-                  <span className="text-2xl text-gray-400 line-through">
-                    ${product.originalPrice}
-                  </span>
-                )}
-                {product.discount && (
-                  <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-bold">
-                    Save ${(product.originalPrice - product.price).toFixed(2)}
-                  </span>
+                {product.originalPrice && product.discount > 0 && (
+                  <>
+                    <span className="text-2xl text-gray-400 line-through">
+                      ${product.originalPrice.toFixed(2)}
+                    </span>
+                    <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-bold">
+                      Save ${(product.originalPrice - product.price).toFixed(2)}
+                    </span>
+                  </>
                 )}
               </div>
               <p className="text-sm text-gray-600">
@@ -425,55 +466,76 @@ const ProductDetails = () => {
               )}
             </div>
 
-            {/* Color Selection */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Color: <span className="text-primary-600">{selectedColor}</span>
-              </h3>
-              <div className="flex gap-3">
-                {product.colors.map((color) => (
-                  <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(color.name)}
-                    className={`relative w-12 h-12 rounded-full border-2 transition-all duration-300 ${
-                      selectedColor === color.name
-                        ? "border-primary-500 scale-110 shadow-lg"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    title={color.name}
-                  >
-                    {selectedColor === color.name && (
-                      <span className="absolute inset-0 flex items-center justify-center text-white text-xl">
-                        ✓
-                      </span>
-                    )}
-                  </button>
-                ))}
+            {/* Color Selection - Only show if colors exist */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Color:{" "}
+                  <span className="text-primary-600">{selectedColor}</span>
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color.hex}
+                      onClick={() => setSelectedColor(color.name)}
+                      className={`relative w-12 h-12 rounded-full border-2 transition-all duration-300 ${
+                        selectedColor === color.name
+                          ? "border-primary-500 scale-110 shadow-lg"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
+                      style={{
+                        backgroundColor: color.hex,
+                        // Add border for white color visibility
+                        boxShadow:
+                          color.hex.toUpperCase() === "#FFFFFF"
+                            ? "inset 0 0 0 1px #e5e7eb"
+                            : "none",
+                      }}
+                      title={color.name}
+                    >
+                      {selectedColor === color.name && (
+                        <span
+                          className="absolute inset-0 flex items-center justify-center text-xl font-bold"
+                          style={{
+                            color:
+                              color.hex.toUpperCase() === "#FFFFFF" ||
+                              color.hex.toUpperCase() === "#D4C5B9"
+                                ? "#000"
+                                : "#fff",
+                          }}
+                        >
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Size Selection */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Size: <span className="text-primary-600">{selectedSize}</span>
-              </h3>
-              <div className="grid grid-cols-4 gap-3">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`py-3 px-4 rounded-lg border-2 font-semibold transition-all duration-300 ${
-                      selectedSize === size
-                        ? "border-primary-500 bg-primary-50 text-primary-600"
-                        : "border-gray-300 hover:border-primary-300 text-gray-700"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+            {/* Size Selection - Only show if sizes exist */}
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Size: <span className="text-primary-600">{selectedSize}</span>
+                </h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`py-3 px-4 rounded-lg border-2 font-semibold transition-all duration-300 ${
+                        selectedSize === size
+                          ? "border-primary-500 bg-primary-50 text-primary-600"
+                          : "border-gray-300 hover:border-primary-300 text-gray-700"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quantity Selector */}
             <div className="mb-6">
@@ -589,7 +651,7 @@ const ProductDetails = () => {
                   Product Description
                 </h2>
                 <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-line">
-                  {product.description}
+                  {product.expandedDescription}
                 </p>
 
                 <h3 className="text-xl font-bold text-gray-900 mb-4">

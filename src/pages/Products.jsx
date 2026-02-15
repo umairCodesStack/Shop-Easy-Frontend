@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import ProductCard from "../components/products/ProductCard";
-import useGetProducts from "./useGetProducts";
-
+import useGetProducts from "../hooks/useGetProducts";
+import { PageSize as pageSize } from "../utils/constants";
 const Products = () => {
   const [searchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
 
   // Fetch ALL products once
   const {

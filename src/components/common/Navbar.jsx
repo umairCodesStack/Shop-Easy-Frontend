@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useCart } from "../../context/cartContext";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+  const { getCartCount } = useCart();
+  const cartCount = getCartCount();
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -108,7 +111,7 @@ const Navbar = () => {
                 <span className="font-medium hidden xl:inline">Cart</span>
                 {/* Cart Badge */}
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                  0
+                  {cartCount}
                 </span>
               </div>
             </Link>
@@ -243,7 +246,7 @@ const Navbar = () => {
                 Cart
               </span>
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                0
+                {cartCount}
               </span>
             </Link>
 
