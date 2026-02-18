@@ -1,19 +1,31 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useSignupUser } from "../hooks/useSignupUser";
+import { useSignupVendor } from "../hooks/useSignupVendor";
+import toast from "react-hot-toast";
+import { getUserIdFromToken } from "../utils/jwtUtils";
+import { useCreateStore } from "../hooks/useCreateStore";
+import { getAuthToken } from "../services/authApi";
 
 const VendorRegister = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [userId, setUserId] = useState(null); // Will be set after step 1
-
+  const {
+    signupAsync, // Use signupAsync instead
+    error: signupError,
+    isLoading: signUpLoading,
+  } = useSignupVendor();
+  const { createStore, isLoading: storeLoading } = useCreateStore();
   // Step 1: User Data
   const [userData, setUserData] = useState({
-    fullName: "",
+    Username: "",
     email: "",
     password: "",
     confirmPassword: "",
     phoneNumber: "",
     agreeToTerms: false,
+    role: "Vendor",
   });
 
   // Step 2: Store Data
@@ -86,10 +98,10 @@ const VendorRegister = () => {
   const validateStep1 = () => {
     const newErrors = {};
 
-    if (!userData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
-    } else if (userData.fullName.trim().length < 3) {
-      newErrors.fullName = "Name must be at least 3 characters";
+    if (!userData.Username.trim()) {
+      newErrors.Username = "Full name is required";
+    } else if (userData.Username.trim().length < 3) {
+      newErrors.Username = "Name must be at least 3 characters";
     }
 
     if (!userData.email) {
@@ -145,31 +157,29 @@ const VendorRegister = () => {
 
     if (!validateStep1()) return;
 
-    setIsLoading(true);
-
     try {
-      // Your user registration API call here
-      // const response = await registerUserAPI(userData);
+      // Use signupAsync to get the response
+      const response = await signupAsync(userData);
+      // Extract userId
+      const extractedUserId = getUserIdFromToken(response.accessToken);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      console.log("User Registration Data:", userData);
-
-      // Simulate getting userId from response
-      const mockUserId = 123; // Replace with actual userId from API response
-      setUserId(mockUserId);
+      if (!extractedUserId) {
+        throw new Error("User ID not found in response");
+      }
 
       // Move to step 2
+      setUserId(extractedUserId);
       setCurrentStep(2);
       setErrors({});
+
+      toast.success("Account created! Setup your store now.");
     } catch (error) {
-      setErrors({ submit: "Registration failed. Please try again." });
-    } finally {
-      setIsLoading(false);
+      setErrors({
+        submit: error.message || "Registration failed. Please try again.",
+      });
+      toast.error(error.message || "Registration failed");
     }
   };
-
   // Handle Step 2 Submit (Final)
   const handleStep2Submit = async (e) => {
     e.preventDefault();
@@ -187,16 +197,14 @@ const VendorRegister = () => {
         createdAt: new Date().toISOString(),
       };
 
-      // Your store creation API call here
-      // const response = await createStoreAPI(storePayload);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
       console.log("Store Registration Data:", storePayload);
 
+      await createStore({
+        storeData: storePayload,
+        userId: userId,
+      });
       // Navigate to success page or vendor dashboard
-      navigate("/vendor/dashboard");
+      //navigate("/vendor/dashboard");
     } catch (error) {
       setErrors({ submit: "Store creation failed. Please try again." });
     } finally {
@@ -359,7 +367,7 @@ const VendorRegister = () => {
                 {/* Full Name */}
                 <div>
                   <label
-                    htmlFor="fullName"
+                    htmlFor="Username"
                     className="block text-sm font-semibold text-gray-700 mb-2"
                   >
                     Full Name *
@@ -370,22 +378,22 @@ const VendorRegister = () => {
                     </span>
                     <input
                       type="text"
-                      id="fullName"
-                      name="fullName"
-                      value={userData.fullName}
+                      id="Username"
+                      name="Username"
+                      value={userData.Username}
                       onChange={handleUserChange}
                       placeholder="Enter your full name"
                       className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 ${
-                        errors.fullName
+                        errors.Username
                           ? "border-red-500 focus:ring-red-200"
                           : "border-gray-200 focus:border-orange-500 focus:ring-orange-200"
                       }`}
                     />
                   </div>
-                  {errors.fullName && (
+                  {errors.Username && (
                     <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
                       <span>⚠️</span>
-                      {errors.fullName}
+                      {errors.Username}
                     </p>
                   )}
                 </div>

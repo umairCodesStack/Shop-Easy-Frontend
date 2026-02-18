@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useLogin } from "../hooks/useLogin";
 
 const Login = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, error, isLoading } = useLogin();
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -49,25 +50,8 @@ const Login = () => {
     e.preventDefault();
 
     if (!validateForm()) return;
-
-    setIsLoading(true);
-
-    try {
-      // Your login API call here
-      // const response = await loginAPI(formData);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      console.log("Login data:", formData);
-
-      // Navigate to home or dashboard after successful login
-      navigate("/");
-    } catch (error) {
-      setErrors({ submit: "Invalid email or password. Please try again." });
-    } finally {
-      setIsLoading(false);
-    }
+    console.log("Form data is valid, proceeding to login:", formData);
+    login(formData);
   };
 
   const handleSocialLogin = (provider) => {
@@ -257,6 +241,14 @@ const Login = () => {
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      rememberMe: e.target.checked,
+                    }))
+                  }
                   className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                 />
                 <span className="text-sm text-gray-700 group-hover:text-gray-900">

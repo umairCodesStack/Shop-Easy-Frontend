@@ -14,17 +14,11 @@ export function useSignupUser() {
     mutationKey: ["signupUser"], // Fixed: should be mutationKey not queryKey
     mutationFn: (userData) => signupApi(userData),
     onError: (error) => {
-      console.error("Signup error:", error);
       toast.error(error.message || "Signup failed. Please try again.");
     },
     onSuccess: (data) => {
-      console.log("Signup successful:", data);
-
-      console.log("Token:", data.accessToken);
-
-      // Optionally store token in localStorage
-      if (data.token) {
-        localStorage.setItem("authToken", data.token);
+      if (data.accessToken) {
+        localStorage.setItem("authToken", data.accessToken);
       }
 
       toast.success("Signup successful! Please log in.");
@@ -36,6 +30,6 @@ export function useSignupUser() {
     signup,
     error,
     isLoading,
-    data, // Return data so components can access it
+    data,
   };
 }
