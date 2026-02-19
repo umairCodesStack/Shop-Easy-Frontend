@@ -16,7 +16,7 @@ import CartPage from "./pages/CartPage";
 // Vendor Protected Pages
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorSuccess from "./pages/VendorSuccess";
-import VendorProducts from "./pages/VendoProduts";
+import VendorProducts from "./pages/VendorProduts";
 import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
 import VendorOrders from "./pages/VendorOrders";

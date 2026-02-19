@@ -11,14 +11,7 @@ function VendorNavbar({ toggleSidebar }) {
   const userData = getUserData();
   const { name, logoUrl, userId } = userData || {};
   const { storeData, error, isLoading } = useGetStore(userId);
-  console.log(
-    "🔍 Store data in Navbar:",
-    storeData,
-    "Error:",
-    error,
-    "Loading:",
-    isLoading,
-  );
+
   const { name: storeName, logoUrl: storeLogo } = storeData || {};
 
   const handleLogout = () => {

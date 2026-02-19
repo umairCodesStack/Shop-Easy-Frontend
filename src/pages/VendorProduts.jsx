@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useGetStoreProducts } from "../hooks/useGetStoreProducts";
+import { deleteProduct } from "../services/productsApi";
 
 const VendorProducts = () => {
   const navigate = useNavigate();
@@ -7,66 +9,19 @@ const VendorProducts = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'table'
+  const [viewMode, setViewMode] = useState("grid");
 
-  // Mock products data
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Wireless Headphones Pro",
-      category: "Electronics",
-      price: 89.99,
-      stock: 45,
-      sales: 234,
-      status: "active",
-      image: "https://via.placeholder.com/100",
-      createdAt: "2026-01-15",
-    },
-    {
-      id: 2,
-      name: "Gaming Mouse RGB",
-      category: "Electronics",
-      price: 45.5,
-      stock: 67,
-      sales: 189,
-      status: "active",
-      image: "https://via.placeholder.com/100",
-      createdAt: "2026-01-20",
-    },
-    {
-      id: 3,
-      name: "Mechanical Keyboard",
-      category: "Electronics",
-      price: 129.99,
-      stock: 23,
-      sales: 156,
-      status: "active",
-      image: "https://via.placeholder.com/100",
-      createdAt: "2026-01-25",
-    },
-    {
-      id: 4,
-      name: "USB-C Hub",
-      category: "Accessories",
-      price: 35.0,
-      stock: 0,
-      sales: 89,
-      status: "out_of_stock",
-      image: "https://via.placeholder.com/100",
-      createdAt: "2026-02-01",
-    },
-    {
-      id: 5,
-      name: "Laptop Stand",
-      category: "Accessories",
-      price: 49.99,
-      stock: 120,
-      sales: 67,
-      status: "inactive",
-      image: "https://via.placeholder.com/100",
-      createdAt: "2026-02-05",
-    },
-  ]);
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const {
+    products,
+    error,
+    isLoading: isStoreProductsLoading,
+  } = useGetStoreProducts(4);
+
+  console.log("Fetched products:", products);
 
   const categories = ["All", "Electronics", "Accessories", "Clothing", "Home"];
 
@@ -76,9 +31,18 @@ const VendorProducts = () => {
     }, 800);
   }, []);
 
-  const handleDelete = (productId) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      setProducts(products.filter((p) => p.id !== productId));
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterCategory, filterStatus]);
+
+  const handleDelete = async (productId) => {
+    try {
+      await deleteProduct(productId);
+      // Refresh the product list after deletion
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting product:", error);
     }
   };
 
@@ -95,14 +59,13 @@ const VendorProducts = () => {
     return "bg-green-100 text-green-800 border-green-200";
   };
 
-  const getStatusText = (status, stock) => {
-    if (stock === 0 || status === "out_of_stock") return "Out of Stock";
-    if (status === "inactive") return "Inactive";
+  const getStatusText = (stock) => {
+    if (stock === 0) return "Out of Stock";
     if (stock < 30) return "Low Stock";
-    return "Active";
+    return "In Stock";
   };
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = products?.filter((product) => {
     const matchesSearch = product.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -114,12 +77,72 @@ const VendorProducts = () => {
       (filterStatus === "active" && product.status === "active") ||
       (filterStatus === "inactive" && product.status === "inactive") ||
       (filterStatus === "low_stock" &&
-        product.stock < 30 &&
-        product.stock > 0) ||
-      (filterStatus === "out_of_stock" && product.stock === 0);
+        product.stockQuantity < 30 &&
+        product.stockQuantity > 0) ||
+      (filterStatus === "out_of_stock" && product.stockQuantity === 0);
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  // Pagination calculations
+  const totalPages = Math.ceil((filteredProducts?.length || 0) / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = filteredProducts?.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePageClick = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+      // Show all pages if total is less than max
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show pages with ellipsis
+      if (currentPage <= 3) {
+        // Near the start
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Near the end
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // In the middle
+        pages.push(1);
+        pages.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
 
   if (isLoading) {
     return (
@@ -165,16 +188,16 @@ const VendorProducts = () => {
             <span className="text-xl sm:text-2xl">📦</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-            {products.length}
+            {products?.length || 0}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600 text-xs sm:text-sm">Active</span>
+            <span className="text-gray-600 text-xs sm:text-sm">In Stock</span>
             <span className="text-xl sm:text-2xl">✅</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-green-600">
-            {products.filter((p) => p.status === "active").length}
+            {products?.filter((p) => p.stockQuantity > 0).length || 0}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md">
@@ -183,7 +206,9 @@ const VendorProducts = () => {
             <span className="text-xl sm:text-2xl">⚠️</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-yellow-600">
-            {products.filter((p) => p.stock < 30 && p.stock > 0).length}
+            {products?.filter(
+              (p) => p.stockQuantity < 30 && p.stockQuantity > 0,
+            ).length || 0}
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md">
@@ -194,7 +219,7 @@ const VendorProducts = () => {
             <span className="text-xl sm:text-2xl">❌</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-red-600">
-            {products.filter((p) => p.stock === 0).length}
+            {products?.filter((p) => p.stockQuantity === 0).length || 0}
           </p>
         </div>
       </div>
@@ -222,7 +247,7 @@ const VendorProducts = () => {
           </div>
 
           {/* Filters Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Category Filter */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -252,10 +277,28 @@ const VendorProducts = () => {
                 className="w-full px-4 py-2 sm:py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-sm sm:text-base"
               >
                 <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
                 <option value="low_stock">Low Stock</option>
                 <option value="out_of_stock">Out of Stock</option>
+              </select>
+            </div>
+
+            {/* Items per page */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Items per page
+              </label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="w-full px-4 py-2 sm:py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-sm sm:text-base"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
               </select>
             </div>
           </div>
@@ -287,17 +330,25 @@ const VendorProducts = () => {
       </div>
 
       {/* Products Display */}
-      {filteredProducts.length > 0 ? (
+      {paginatedProducts?.length > 0 ? (
         <>
-          {/* Mobile/Tablet Card View */}
-          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {filteredProducts.map((product) => (
+          {/* Grid View - Show on mobile always, or when viewMode is 'grid' on desktop */}
+          <div
+            className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${
+              viewMode === "table" ? "hidden lg:hidden" : ""
+            }`}
+          >
+            {paginatedProducts?.map((product) => (
               <div
                 key={product.id}
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
               >
                 <img
-                  src={product.image}
+                  src={
+                    product.imageUrls?.[0] ||
+                    product.imageUrl ||
+                    "https://via.placeholder.com/400"
+                  }
                   alt={product.name}
                   className="w-full h-40 object-cover"
                 />
@@ -313,37 +364,38 @@ const VendorProducts = () => {
                     <div>
                       <p className="text-xs text-gray-500">Price</p>
                       <p className="font-bold text-gray-900">
-                        ${product.price}
+                        ${parseFloat(product.finalPrice || 0).toFixed(2)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Stock</p>
                       <p
                         className={`font-bold ${
-                          product.stock === 0
+                          product.stockQuantity === 0
                             ? "text-red-600"
-                            : product.stock < 30
+                            : product.stockQuantity < 30
                               ? "text-yellow-600"
                               : "text-green-600"
                         }`}
                       >
-                        {product.stock}
+                        {product.stockQuantity}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Sales</p>
-                      <p className="font-bold text-gray-900">{product.sales}</p>
+                      <p className="text-xs text-gray-500">Discount</p>
+                      <p className="font-bold text-gray-900">
+                        {product.discount}%
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Status</p>
                       <span
                         className={`inline-block px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${getStatusBadge(
                           product.status,
-                          product.stock,
+                          product.stockQuantity,
                         )}`}
                       >
-                        {/* ↑ Added whitespace-nowrap */}
-                        {getStatusText(product.status, product.stock)}
+                        {getStatusText(product.stockQuantity)}
                       </span>
                     </div>
                   </div>
@@ -367,8 +419,51 @@ const VendorProducts = () => {
             ))}
           </div>
 
-          {/* Desktop Table View */}
-          <div className="hidden lg:block bg-white rounded-xl shadow-md overflow-hidden">
+          {/* Pagination for Grid View */}
+          <div
+            className={`bg-white rounded-xl shadow-md p-4 ${
+              viewMode === "table" ? "hidden lg:hidden" : ""
+            }`}
+          >
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-gray-600 text-center">
+                Showing <span className="font-semibold">{startIndex + 1}</span>{" "}
+                to{" "}
+                <span className="font-semibold">
+                  {Math.min(endIndex, filteredProducts.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold">{filteredProducts.length}</span>{" "}
+                products
+              </p>
+              <div className="flex justify-between items-center gap-2">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table View - Only show on desktop and when viewMode is 'table' */}
+          <div
+            className={`bg-white rounded-xl shadow-md overflow-hidden hidden ${
+              viewMode === "table" ? "lg:block" : "lg:hidden"
+            }`}
+          >
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -386,7 +481,7 @@ const VendorProducts = () => {
                       Stock
                     </th>
                     <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">
-                      Sales
+                      Discount
                     </th>
                     <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">
                       Status
@@ -397,7 +492,7 @@ const VendorProducts = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map((product) => (
+                  {paginatedProducts.map((product) => (
                     <tr
                       key={product.id}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -405,7 +500,11 @@ const VendorProducts = () => {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <img
-                            src={product.image}
+                            src={
+                              product.imageUrls?.[0] ||
+                              product.imageUrl ||
+                              "https://via.placeholder.com/400"
+                            }
                             alt={product.name}
                             className="w-12 h-12 rounded-lg object-cover"
                           />
@@ -426,34 +525,35 @@ const VendorProducts = () => {
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-semibold text-gray-900">
-                          ${product.price}
+                          ${parseFloat(product.finalPrice || 0).toFixed(2)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
                         <span
                           className={`font-semibold ${
-                            product.stock === 0
+                            product.stockQuantity === 0
                               ? "text-red-600"
-                              : product.stock < 30
+                              : product.stockQuantity < 30
                                 ? "text-yellow-600"
                                 : "text-green-600"
                           }`}
                         >
-                          {product.stock}
+                          {product.stockQuantity}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="text-gray-700">{product.sales}</span>
+                        <span className="text-gray-700">
+                          {product.discount}%
+                        </span>
                       </td>
                       <td className="py-4 px-6">
                         <span
                           className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${getStatusBadge(
                             product.status,
-                            product.stock,
+                            product.stockQuantity,
                           )}`}
                         >
-                          {/* ↑ Added inline-block and whitespace-nowrap */}
-                          {getStatusText(product.status, product.stock)}
+                          {getStatusText(product.stockQuantity)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -474,26 +574,70 @@ const VendorProducts = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}{" "}
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination */}
-            <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 gap-4">
-              <p className="text-sm text-gray-600">
-                Showing{" "}
-                <span className="font-semibold">{filteredProducts.length}</span>{" "}
-                of <span className="font-semibold">{products.length}</span>{" "}
-                products
-              </p>
-              <div className="flex gap-2">
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                  Previous
-                </button>
-                <button className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
-                  Next
-                </button>
+            {/* Desktop Pagination */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-gray-600">
+                  Showing{" "}
+                  <span className="font-semibold">{startIndex + 1}</span> to{" "}
+                  <span className="font-semibold">
+                    {Math.min(endIndex, filteredProducts.length)}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold">
+                    {filteredProducts.length}
+                  </span>{" "}
+                  products
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+
+                  {/* Page numbers */}
+                  <div className="hidden sm:flex items-center gap-1">
+                    {getPageNumbers().map((page, index) =>
+                      page === "..." ? (
+                        <span
+                          key={`ellipsis-${index}`}
+                          className="px-3 py-2 text-gray-500"
+                        >
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={page}
+                          onClick={() => handlePageClick(page)}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                            currentPage === page
+                              ? "bg-orange-500 text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ),
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>

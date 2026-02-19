@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useUpdateStore } from "../hooks/useUpdateStore";
 import toast from "react-hot-toast";
 import useGetStore from "../hooks/useGetStore";
 import { getUserData } from "../utils/jwtUtils";
+import { useUpdateUser } from "../hooks/useUpdateUser";
+import { useGetUser } from "../hooks/useGetUser";
+import { useUpdateUserPassword } from "../hooks/useUpdateUserPassword";
 
 const VendorStoreSettings = () => {
   const navigate = useNavigate();
@@ -12,21 +15,23 @@ const VendorStoreSettings = () => {
   const [activeTab, setActiveTab] = useState("general");
 
   const userData = getUserData();
-  const { name, logoUrl, userId } = userData || {};
+  const { userId } = userData || {};
+
   const { storeData: fetchedStoreData, error, isLoading } = useGetStore(userId);
   const { updateStore, isLoading: isUpdating } = useUpdateStore();
 
-  const [storeData, setStoreData] = useState({
-    name: "",
-    description: "",
-    logoUrl: "",
-    bannerUrl: "",
-    phoneNumber: "",
-    address: "",
-    isActive: true,
-    id: null,
-    approvalStatus: "", // Add this
-  });
+  // Fetch full user data from API
+  const { user: fetchedUserData, isLoading: isUserLoading } = useGetUser(
+    userData?.email,
+  );
+
+  const {
+    updateUser,
+    error: updateError,
+    isLoading: isUpdatingOwner,
+  } = useUpdateUser();
+
+  const [draftStoreData, setDraftStoreData] = useState({});
 
   // Image states
   const [logoFile, setLogoFile] = useState(null);
@@ -35,11 +40,35 @@ const VendorStoreSettings = () => {
   const [bannerPreview, setBannerPreview] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
 
+  // Track if user wants to explicitly remove images
+  const [removedLogo, setRemovedLogo] = useState(false);
+  const [removedBanner, setRemovedBanner] = useState(false);
+
+  // UI state for enabling edit mode for images
+  const [isEditingImages, setIsEditingImages] = useState(false);
+  const { updateUserPassword, isLoading: isUpdatingPassword } =
+    useUpdateUserPassword();
+
+  // Use direct state for owner data instead of useMemo
   const [ownerData, setOwnerData] = useState({
-    fullName: "",
-    email: "",
-    phoneNumber: "",
+    id: userData?.userId || null,
+    name: userData?.name || "",
+    email: userData?.email || "",
+    phoneNumber: userData?.phoneNumber || "",
   });
+
+  // Update ownerData ONLY when fetchedUserData initially loads
+  useEffect(() => {
+    if (fetchedUserData && !isUserLoading) {
+      console.log("✅ Setting owner data from API:", fetchedUserData);
+      setOwnerData({
+        id: fetchedUserData.id || userData?.userId,
+        name: fetchedUserData.name || "",
+        email: fetchedUserData.email || "",
+        phoneNumber: fetchedUserData.phoneNumber || "",
+      });
+    }
+  }, [fetchedUserData, isUserLoading]); // Removed userData from dependencies
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -47,37 +76,36 @@ const VendorStoreSettings = () => {
     confirmPassword: "",
   });
 
-  // Load store data when fetched
-  useEffect(() => {
-    if (fetchedStoreData) {
-      console.log("📦 Fetched Store Data:", fetchedStoreData);
-      console.log("🆔 Store ID:", fetchedStoreData.id);
-
-      setStoreData({
-        name: fetchedStoreData.name || "",
-        description: fetchedStoreData.description || "",
-        logoUrl: fetchedStoreData.logoUrl || "",
-        bannerUrl: fetchedStoreData.bannerUrl || "",
-        phoneNumber: fetchedStoreData.phoneNumber || "",
-        address: fetchedStoreData.address || "",
-        isActive: fetchedStoreData.isActive ?? true,
-        id: fetchedStoreData.id || null,
-        approvalStatus: fetchedStoreData.approvalStatus || "Pending", // Add this
-      });
-
-      // Set preview for existing images
-      if (fetchedStoreData.logoUrl) {
-        setLogoPreview(fetchedStoreData.logoUrl);
-      }
-      if (fetchedStoreData.bannerUrl) {
-        setBannerPreview(fetchedStoreData.bannerUrl);
-      }
-    }
+  const baseStoreData = useMemo(() => {
+    return {
+      name: fetchedStoreData?.name ?? "",
+      description: fetchedStoreData?.description ?? "",
+      logoUrl: fetchedStoreData?.logoUrl ?? "",
+      bannerUrl: fetchedStoreData?.bannerUrl ?? "",
+      phoneNumber: fetchedStoreData?.phoneNumber ?? "",
+      address: fetchedStoreData?.address ?? "",
+      isActive: fetchedStoreData?.isActive ?? true,
+      id: fetchedStoreData?.id ?? null,
+      approvalStatus: fetchedStoreData?.approvalStatus ?? "Pending",
+    };
   }, [fetchedStoreData]);
+
+  const storeData = useMemo(() => {
+    return { ...baseStoreData, ...draftStoreData };
+  }, [baseStoreData, draftStoreData]);
+
+  // Show preview if new file selected, otherwise show server URL (unless explicitly removed)
+  const effectiveLogoPreview = removedLogo
+    ? null
+    : (logoPreview ?? storeData.logoUrl ?? null);
+  const effectiveBannerPreview = removedBanner
+    ? null
+    : (bannerPreview ?? storeData.bannerUrl ?? null);
 
   const handleStoreChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setStoreData((prev) => ({
+
+    setDraftStoreData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
@@ -85,93 +113,92 @@ const VendorStoreSettings = () => {
 
   const handleOwnerChange = (e) => {
     const { name, value } = e.target;
-    setOwnerData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    console.log("🔵 Field changed:", name, "->", value);
+
+    // Map 'fullName' input to 'name' in ownerData
+    const fieldName = name === "fullName" ? "name" : name;
+
+    setOwnerData((prev) => {
+      const updated = { ...prev, [fieldName]: value };
+      console.log("📝 Updated ownerData:", updated);
+      return updated;
+    });
   };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswordData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle Logo Upload
   const handleLogoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        setImageErrors((prev) => ({
-          ...prev,
-          logo: "Please select an image file",
-        }));
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        setImageErrors((prev) => ({
-          ...prev,
-          logo: "Image must be less than 5MB",
-        }));
-        return;
-      }
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      setLogoFile(file);
-      setImageErrors((prev) => ({ ...prev, logo: null }));
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      setImageErrors((prev) => ({
+        ...prev,
+        logo: "Please select an image file",
+      }));
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageErrors((prev) => ({
+        ...prev,
+        logo: "Image must be less than 5MB",
+      }));
+      return;
+    }
+
+    setLogoFile(file);
+    setRemovedLogo(false);
+    setImageErrors((prev) => ({ ...prev, logo: null }));
+
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result);
+    reader.readAsDataURL(file);
   };
 
-  // Handle Banner Upload
   const handleBannerChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        setImageErrors((prev) => ({
-          ...prev,
-          banner: "Please select an image file",
-        }));
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setImageErrors((prev) => ({
-          ...prev,
-          banner: "Image must be less than 10MB",
-        }));
-        return;
-      }
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      setBannerFile(file);
-      setImageErrors((prev) => ({ ...prev, banner: null }));
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBannerPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      setImageErrors((prev) => ({
+        ...prev,
+        banner: "Please select an image file",
+      }));
+      return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageErrors((prev) => ({
+        ...prev,
+        banner: "Image must be less than 10MB",
+      }));
+      return;
+    }
+
+    setBannerFile(file);
+    setRemovedBanner(false);
+    setImageErrors((prev) => ({ ...prev, banner: null }));
+
+    const reader = new FileReader();
+    reader.onloadend = () => setBannerPreview(reader.result);
+    reader.readAsDataURL(file);
   };
 
-  // Remove Logo
   const removeLogo = () => {
     setLogoFile(null);
-    setLogoPreview(storeData.logoUrl || null);
+    setLogoPreview(null);
+    setRemovedLogo(true);
     setImageErrors((prev) => ({ ...prev, logo: null }));
     const fileInput = document.getElementById("logoFile");
     if (fileInput) fileInput.value = "";
   };
 
-  // Remove Banner
   const removeBanner = () => {
     setBannerFile(null);
-    setBannerPreview(storeData.bannerUrl || null);
+    setBannerPreview(null);
+    setRemovedBanner(true);
     setImageErrors((prev) => ({ ...prev, banner: null }));
     const fileInput = document.getElementById("bannerFile");
     if (fileInput) fileInput.value = "";
@@ -180,44 +207,90 @@ const VendorStoreSettings = () => {
   const handleStoreSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("📤 Current storeData:", storeData);
-    console.log("🆔 Store ID being sent:", storeData.id);
-
     if (!storeData.id) {
       toast.error("Store ID is missing!");
-      console.error("❌ No store ID found in storeData");
       return;
     }
 
     try {
-      const updatePayload = {
-        ...storeData,
-        logo: logoFile,
-        banner: bannerFile,
+      const formData = {
+        id: storeData.id,
+        name: storeData.name,
+        description: storeData.description || "",
+        phoneNumber: storeData.phoneNumber || "",
+        address: storeData.address || "",
+        isActive: storeData.isActive,
+        approvalStatus: storeData.approvalStatus || "Pending",
       };
 
-      console.log("📦 Update payload:", {
-        id: updatePayload.id,
-        name: updatePayload.name,
-        logo: logoFile ? "File selected" : "No new logo",
-        banner: bannerFile ? "File selected" : "No new banner",
-      });
+      // Handle logo - ALWAYS include logoUrl
+      if (removedLogo) {
+        formData.logoUrl = "";
+      } else {
+        formData.logoUrl = storeData.logoUrl || "";
+        if (logoFile) {
+          formData.logo = logoFile;
+        }
+      }
 
-      await updateStore(updatePayload);
+      // Handle banner - ALWAYS include bannerUrl
+      if (removedBanner) {
+        formData.bannerUrl = "";
+      } else {
+        formData.bannerUrl = storeData.bannerUrl || "";
+        if (bannerFile) {
+          formData.banner = bannerFile;
+        }
+      }
+
+      await updateStore(formData);
       toast.success("Store settings updated successfully!");
 
-      // Reset file inputs
+      setDraftStoreData({});
       setLogoFile(null);
       setBannerFile(null);
-    } catch (error) {
-      console.error("Update error:", error);
-      toast.error(error.message || "Failed to update store settings");
+      setLogoPreview(null);
+      setBannerPreview(null);
+      setRemovedLogo(false);
+      setRemovedBanner(false);
+      setIsEditingImages(false);
+    } catch (err) {
+      console.error("❌ Update error:", err);
+      toast.error(err?.message || "Failed to update store settings");
     }
   };
+
   const handleOwnerSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement owner update
-    toast.success("Account information updated successfully!");
+
+    try {
+      console.log("🔵 Current ownerData state:", ownerData);
+
+      if (!ownerData.id) {
+        toast.error("User ID is missing!");
+        console.error("❌ No user ID in ownerData:", ownerData);
+        return;
+      }
+
+      // Build payload - always include all fields
+      const updatePayload = {
+        id: ownerData.id,
+        name: ownerData.name || "",
+        email: ownerData.email || "",
+        phoneNumber: ownerData.phoneNumber || "",
+      };
+
+      console.log("📤 Sending update payload:", updatePayload);
+
+      await updateUser(updatePayload);
+
+      console.log("✅ Update successful!");
+      toast.success("Account information updated successfully!");
+    } catch (err) {
+      console.error("❌ Update account error:", err);
+      console.error("Error details:", err.response?.data);
+      toast.error(err?.message || "Failed to update account information");
+    }
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -229,16 +302,26 @@ const VendorStoreSettings = () => {
       return;
     }
 
-    // TODO: Implement password update
-    toast.success("Password updated successfully!");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    try {
+      await updateUserPassword({
+        email: ownerData.email,
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      //toast.success("Password updated successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setErrors({});
+    } catch (err) {
+      console.error("❌ Update password error:", err);
+      toast.error(err?.message || "Failed to update password");
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center py-20">
@@ -251,14 +334,31 @@ const VendorStoreSettings = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-10">
+          <div className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Failed to load store
+            </h2>
+            <p className="text-gray-700">
+              {error?.message ||
+                "Something went wrong while fetching store data."}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-              <span>⚙️</span>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Store Settings
             </h1>
             <p className="text-gray-600">
@@ -266,9 +366,156 @@ const VendorStoreSettings = () => {
             </p>
           </div>
 
-          {/* Tabs */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="flex border-b border-gray-200 overflow-x-auto">
+            {/* Banner + Logo section */}
+            <div className="relative">
+              {/* Banner background */}
+              <div
+                className="h-56 sm:h-64 w-full bg-gray-200"
+                style={{
+                  backgroundImage: effectiveBannerPreview
+                    ? `url(${effectiveBannerPreview})`
+                    : "linear-gradient(90deg, rgba(249,115,22,1), rgba(239,68,68,1))",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              >
+                {/* Dark overlay for readability */}
+                <div className="absolute inset-0 bg-black/20"></div>
+              </div>
+
+              {/* Edit button (top right on banner) */}
+              <div className="absolute top-4 right-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingImages((v) => !v)}
+                  className="bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-lg shadow font-semibold transition"
+                >
+                  {isEditingImages ? "Done" : "Edit Photos"}
+                </button>
+              </div>
+
+              {/* Store name and status */}
+              <div className="absolute left-6 sm:left-10 top-4">
+                <p className="text-white text-xl sm:text-2xl font-bold drop-shadow-lg">
+                  {storeData.name || "Your Store"}
+                </p>
+                <p className="text-white/90 text-sm drop-shadow-lg">
+                  Status:{" "}
+                  <span className="font-semibold">
+                    {storeData.approvalStatus || "Pending"}
+                  </span>
+                </p>
+              </div>
+
+              {/* Logo circle */}
+              <div className="absolute left-6 sm:left-10 -bottom-12 sm:-bottom-14">
+                <div className="relative">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-lg bg-gray-100 overflow-hidden flex items-center justify-center">
+                    {effectiveLogoPreview ? (
+                      <img
+                        src={effectiveLogoPreview}
+                        alt="Store logo"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl">🏪</span>
+                    )}
+                  </div>
+
+                  {isEditingImages && (
+                    <label
+                      htmlFor="logoFile"
+                      className="absolute -right-1 -bottom-1 bg-orange-600 hover:bg-orange-700 text-white rounded-full p-2 shadow cursor-pointer"
+                      title="Change logo"
+                    >
+                      ✎
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Hidden file inputs */}
+            <input
+              type="file"
+              id="logoFile"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="hidden"
+              disabled={!isEditingImages}
+            />
+            <input
+              type="file"
+              id="bannerFile"
+              accept="image/*"
+              onChange={handleBannerChange}
+              className="hidden"
+              disabled={!isEditingImages}
+            />
+
+            {/* Photo edit controls */}
+            {isEditingImages && (
+              <div className="px-6 sm:px-10 pt-16 sm:pt-18 pb-6 border-b border-gray-200 bg-white">
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                  <div className="text-sm text-gray-700">
+                    Update your store banner and logo. Changes will be saved
+                    when you click{" "}
+                    <span className="font-semibold">Save Store Settings</span>.
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <label
+                      htmlFor="bannerFile"
+                      className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold hover:bg-gray-800 cursor-pointer text-sm"
+                    >
+                      Change Banner
+                    </label>
+                    <label
+                      htmlFor="logoFile"
+                      className="px-4 py-2 rounded-lg bg-orange-600 text-white font-semibold hover:bg-orange-700 cursor-pointer text-sm"
+                    >
+                      Change Logo
+                    </label>
+
+                    {effectiveBannerPreview && (
+                      <button
+                        type="button"
+                        onClick={removeBanner}
+                        className="px-4 py-2 rounded-lg bg-red-50 text-red-700 font-semibold hover:bg-red-100 text-sm"
+                      >
+                        Remove Banner
+                      </button>
+                    )}
+                    {effectiveLogoPreview && (
+                      <button
+                        type="button"
+                        onClick={removeLogo}
+                        className="px-4 py-2 rounded-lg bg-red-50 text-red-700 font-semibold hover:bg-red-100 text-sm"
+                      >
+                        Remove Logo
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {(imageErrors.logo || imageErrors.banner) && (
+                  <div className="mt-3 space-y-1">
+                    {imageErrors.logo && (
+                      <p className="text-sm text-red-600">{imageErrors.logo}</p>
+                    )}
+                    {imageErrors.banner && (
+                      <p className="text-sm text-red-600">
+                        {imageErrors.banner}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 overflow-x-auto pt-16 sm:pt-18">
               <button
                 onClick={() => setActiveTab("general")}
                 className={`flex-1 px-6 py-4 font-semibold transition-colors whitespace-nowrap ${
@@ -301,9 +548,8 @@ const VendorStoreSettings = () => {
               </button>
             </div>
 
-            {/* Tab Content */}
+            {/* Content */}
             <div className="p-8">
-              {/* Store Info Tab */}
               {activeTab === "general" && (
                 <form onSubmit={handleStoreSubmit} className="space-y-6">
                   {/* Store Name */}
@@ -332,141 +578,7 @@ const VendorStoreSettings = () => {
                       onChange={handleStoreChange}
                       rows="4"
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors resize-none"
-                    ></textarea>
-                  </div>
-
-                  {/* Logo Upload */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Store Logo
-                    </label>
-
-                    {!logoPreview ? (
-                      <div className="relative">
-                        <input
-                          type="file"
-                          id="logoFile"
-                          accept="image/*"
-                          onChange={handleLogoChange}
-                          className="hidden"
-                        />
-                        <label
-                          htmlFor="logoFile"
-                          className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-orange-500 transition-colors bg-gray-50 hover:bg-orange-50"
-                        >
-                          <span className="text-4xl mb-2">🖼️</span>
-                          <span className="text-sm font-semibold text-gray-700">
-                            Click to upload new logo
-                          </span>
-                          <span className="text-xs text-gray-500 mt-1">
-                            Recommended: 200x200px (Max 5MB)
-                          </span>
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <div className="w-full h-40 border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center">
-                          <img
-                            src={logoPreview}
-                            alt="Logo preview"
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={removeLogo}
-                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-
-                    {imageErrors.logo && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                        <span>⚠️</span>
-                        {imageErrors.logo}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Banner Upload */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Store Banner
-                    </label>
-
-                    {!bannerPreview ? (
-                      <div className="relative">
-                        <input
-                          type="file"
-                          id="bannerFile"
-                          accept="image/*"
-                          onChange={handleBannerChange}
-                          className="hidden"
-                        />
-                        <label
-                          htmlFor="bannerFile"
-                          className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-orange-500 transition-colors bg-gray-50 hover:bg-orange-50"
-                        >
-                          <span className="text-4xl mb-2">🎨</span>
-                          <span className="text-sm font-semibold text-gray-700">
-                            Click to upload new banner
-                          </span>
-                          <span className="text-xs text-gray-500 mt-1">
-                            Recommended: 1200x300px (Max 10MB)
-                          </span>
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <div className="w-full h-48 border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
-                          <img
-                            src={bannerPreview}
-                            alt="Banner preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={removeBanner}
-                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-
-                    {imageErrors.banner && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                        <span>⚠️</span>
-                        {imageErrors.banner}
-                      </p>
-                    )}
+                    />
                   </div>
 
                   {/* Phone */}
@@ -494,7 +606,7 @@ const VendorStoreSettings = () => {
                       onChange={handleStoreChange}
                       rows="3"
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors resize-none"
-                    ></textarea>
+                    />
                   </div>
 
                   {/* Active Status */}
@@ -516,19 +628,11 @@ const VendorStoreSettings = () => {
                     disabled={isUpdating}
                     className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUpdating ? (
-                      <>
-                        <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Store Settings"
-                    )}
+                    {isUpdating ? "Saving..." : "Save Store Settings"}
                   </button>
                 </form>
               )}
 
-              {/* Account Tab */}
               {activeTab === "account" && (
                 <form onSubmit={handleOwnerSubmit} className="space-y-6">
                   <div>
@@ -538,9 +642,10 @@ const VendorStoreSettings = () => {
                     <input
                       type="text"
                       name="fullName"
-                      value={ownerData.fullName}
+                      value={ownerData.name || ""}
                       onChange={handleOwnerChange}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      disabled={isUpdatingOwner}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -551,9 +656,10 @@ const VendorStoreSettings = () => {
                     <input
                       type="email"
                       name="email"
-                      value={ownerData.email}
+                      value={ownerData.email || ""}
                       onChange={handleOwnerChange}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      disabled={isUpdatingOwner}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -564,22 +670,30 @@ const VendorStoreSettings = () => {
                     <input
                       type="tel"
                       name="phoneNumber"
-                      value={ownerData.phoneNumber}
+                      value={ownerData.phoneNumber || ""}
                       onChange={handleOwnerChange}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors"
+                      disabled={isUpdatingOwner}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                    disabled={isUpdatingOwner}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Account Information
+                    {isUpdatingOwner ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Saving...
+                      </span>
+                    ) : (
+                      "Save Account Information"
+                    )}
                   </button>
                 </form>
               )}
 
-              {/* Security Tab */}
               {activeTab === "security" && (
                 <form onSubmit={handlePasswordSubmit} className="space-y-6">
                   <div>

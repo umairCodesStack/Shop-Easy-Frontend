@@ -1,4 +1,7 @@
 import { API_BASE_URL } from "../utils/constants";
+import { getUserData } from "../utils/jwtUtils";
+import { getAuthToken } from "./authApi";
+import { supabase } from "./supabase";
 export default async function getProducts() {
   let url = `${API_BASE_URL}/odata/Product`;
 
@@ -95,6 +98,193 @@ export async function getProductById(id) {
     return data;
   } catch (error) {
     console.error("Error fetching product by ID:", error);
+    throw error;
+  }
+}
+export async function getProductsByUserId(userId) {
+  try {
+    // Option 1: userId as integer
+    const url = `${API_BASE_URL}/odata/Product/getProductByUserId?userId=${userId}`;
+
+    console.log("🔵 Fetching products by user ID:", url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Error response:", errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("✅ Products by user ID data received:", data);
+
+    // OData returns results in 'value' array
+    return data.value || data;
+  } catch (error) {
+    console.error("❌ Error fetching products by user ID:", error);
+    throw error;
+  }
+}
+export async function deleteProduct(productId) {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("User is not authenticated");
+  }
+  const url = `${API_BASE_URL}/odata/Product/${productId}`;
+
+  try {
+    console.log("🔵 Deleting product with ID:", productId);
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Error response:", errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+    console.log("✅ Product deleted successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Error deleting product:", error);
+    throw error;
+  }
+}
+export async function createProduct(productData) {
+  console.log("🔵 createProduct function called");
+
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("User is not authenticated");
+  }
+  if (!productData.storeId) {
+    throw new Error("Store ID is required to create a product");
+  }
+  if (!productData.userId) {
+    throw new Error("User ID is required to create a product");
+  }
+  try {
+    const imageUrls = [];
+    const uploadedImagePaths = [];
+
+    // Upload all product images to Supabase if provided
+    if (productData.images && productData.images.length > 0) {
+      console.log(
+        `📸 Uploading ${productData.images.length} images to Supabase...`,
+      );
+
+      for (let i = 0; i < productData.images.length; i++) {
+        const image = productData.images[i];
+
+        console.log(
+          `📤 Uploading image ${i + 1}/${productData.images.length}...`,
+        );
+
+        const imageName =
+          `${Date.now()}-${Math.random()}-${image.name}`.replaceAll("/", "");
+        const uploadPath = `products/${imageName}`;
+
+        const { data: imageData, error: imageError } = await supabase.storage
+          .from("Products")
+          .upload(uploadPath, image, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (imageError) {
+          console.error(`❌ Error uploading image ${i + 1}:`, imageError);
+
+          // Rollback: delete all previously uploaded images
+          if (uploadedImagePaths.length > 0) {
+            console.log("🔄 Rolling back uploaded images...");
+            await supabase.storage.from("Products").remove(uploadedImagePaths);
+          }
+
+          throw new Error(`Failed to upload product image ${i + 1}`);
+        }
+
+        // Get public URL for image
+        const { data: imagePublicData } = supabase.storage
+          .from("Products")
+          .getPublicUrl(uploadPath);
+
+        imageUrls.push(imagePublicData.publicUrl);
+        uploadedImagePaths.push(uploadPath);
+
+        console.log(
+          `✅ Image ${i + 1} uploaded successfully:`,
+          imagePublicData.publicUrl,
+        );
+      }
+
+      console.log(`✅ All ${imageUrls.length} images uploaded successfully`);
+    }
+
+    // Prepare final product data matching the API payload
+    const finalProductData = {
+      name: productData.name,
+      description: productData.description || "",
+      price: parseFloat(productData.price),
+      stockQuantity: parseInt(productData.stockQuantity),
+      storeId: productData.storeId,
+      category: productData.category,
+      sizes: productData.sizes || [],
+      colors: productData.colors || [],
+      imageUrls: imageUrls,
+      userId: productData.userId,
+      discount: parseFloat(productData.discount) || 0,
+      tag: productData.tag || "",
+    };
+
+    console.log("📦 Sending product data to API:", finalProductData);
+
+    // Send data to your backend API
+    const response = await fetch(`${API_BASE_URL}/odata/Product/AddProduct`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(finalProductData),
+    });
+
+    console.log("🔵 API Response status:", response.status);
+
+    if (!response.ok) {
+      // Rollback: delete uploaded images if API returns error
+      if (uploadedImagePaths.length > 0) {
+        console.log("🔄 Rolling back all uploaded images...");
+        await supabase.storage.from("Products").remove(uploadedImagePaths);
+      }
+
+      const errorText = await response.text();
+      console.error("❌ Error response:", errorText);
+
+      const errorData = await response
+        .json()
+        .catch(() => ({ message: `Server error: ${response.status}` }));
+
+      throw new Error(
+        errorData.message ||
+          `HTTP error! status: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    console.log("✅ Product created successfully:", data);
+
+    return data;
+  } catch (error) {
+    console.error("❌ createProduct error:", error);
     throw error;
   }
 }
