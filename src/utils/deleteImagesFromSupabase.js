@@ -1,42 +1,73 @@
 import { supabase } from "../services/supabase";
 
 export const deleteImagesFromSupabase = async (imageUrls) => {
-  if (!imageUrls || imageUrls.length === 0) {
+  if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     console.log("⚠️ No images to delete");
-    return { success: true, deleted: 0 };
+    return { success: true, deleted: 0, skipped: 0, filePaths: [] };
   }
 
-  console.log("🔵 Deleting images from Supabase:", imageUrls);
+  const marker = "/storage/v1/object/public/Products/";
 
-  try {
-    // Extract file paths from URLs
-    const filePaths = imageUrls.map((url) => {
-      const urlParts = url.split("/");
-      // Take last 2 parts: folder/filename
-      return urlParts.slice(-2).join("/");
-    });
+  // Split into valid Supabase URLs and skipped (non-supabase / invalid) URLs
+  const filePaths = [];
+  const skippedUrls = [];
 
-    console.log("📂 File paths to delete:", filePaths);
+  for (const url of imageUrls) {
+    try {
+      const u = new URL(url);
+      const idx = u.pathname.indexOf(marker);
 
-    // Delete files (Supabase will skip non-existent files)
-    const { data, error } = await supabase.storage
-      .from("Products")
-      .remove(filePaths);
+      if (idx === -1) {
+        skippedUrls.push(url);
+        continue;
+      }
 
-    if (error) {
-      console.error("❌ Error deleting images:", error);
-      throw new Error(error.message);
+      const path = decodeURIComponent(
+        u.pathname.slice(idx + marker.length),
+      ).replace(/^\/+/, "");
+
+      if (!path) {
+        skippedUrls.push(url);
+        continue;
+      }
+
+      filePaths.push(path);
+    } catch {
+      // Not a valid URL string
+      skippedUrls.push(url);
     }
+  }
 
-    console.log("✅ Successfully deleted images:", data);
-
+  if (filePaths.length === 0) {
+    console.log("⚠️ No Supabase image paths found. Skipping storage delete.");
     return {
-      success: true,
-      deleted: data ? data.length : filePaths.length,
-      filePaths,
+      success: false,
+      deleted: 0,
+      skipped: skippedUrls.length,
+      noSupabaseUrl: true,
+      filePaths: [],
     };
-  } catch (error) {
-    console.error("❌ Fatal error in deleteImagesFromSupabase:", error);
+  }
+
+  console.log("📂 File paths to delete:", filePaths);
+
+  const { data, error } = await supabase.storage
+    .from("Products")
+    .remove(filePaths);
+
+  if (error) {
+    console.error("❌ Error deleting images:", error);
     throw error;
   }
+
+  console.log("✅ Successfully deleted images:", data);
+
+  return {
+    success: true,
+    deleted: data?.length ?? 0,
+    skipped: skippedUrls.length,
+    skippedUrls,
+    filePaths,
+    data,
+  };
 };

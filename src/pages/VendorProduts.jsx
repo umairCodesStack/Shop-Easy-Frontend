@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGetStoreProducts } from "../hooks/useGetStoreProducts";
-import { deleteProduct } from "../services/productsApi";
+
+import { useDeleteProduct } from "../hooks/useDeleteProduct";
 
 const VendorProducts = () => {
   const navigate = useNavigate();
@@ -10,6 +11,11 @@ const VendorProducts = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
+  const {
+    deleteProductMutate,
+    error: deletionError,
+    isLoading: deletingProduct,
+  } = useDeleteProduct();
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,9 +44,12 @@ const VendorProducts = () => {
 
   const handleDelete = async (productId) => {
     try {
-      await deleteProduct(productId);
+      const imageUrls =
+        products.find((p) => p.id === productId)?.imageUrls ?? [];
+      deleteProductMutate({ productId, imageUrls });
+
       // Refresh the product list after deletion
-      window.location.reload();
+      //window.location.reload();
     } catch (error) {
       console.error("Error deleting product:", error);
     }

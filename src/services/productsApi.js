@@ -1,7 +1,8 @@
 import { API_BASE_URL } from "../utils/constants";
+import { deleteImagesFromSupabase } from "../utils/deleteImagesFromSupabase";
 import { getUserData } from "../utils/jwtUtils";
 import { getAuthToken } from "./authApi";
-import { supabase } from "./supabase";
+import { supabase, supabaseUrl } from "./supabase";
 export default async function getProducts() {
   let url = `${API_BASE_URL}/odata/Product`;
 
@@ -131,12 +132,19 @@ export async function getProductsByUserId(userId) {
     throw error;
   }
 }
-export async function deleteProduct(productId) {
+export async function deleteProduct(productId, imageUrls) {
   const token = getAuthToken();
   if (!token) {
     throw new Error("User is not authenticated");
   }
-  const url = `${API_BASE_URL}/odata/Product/${productId}`;
+  console.log(imageUrls);
+  if (imageUrls) {
+    const { success, filePaths, deleted } =
+      await deleteImagesFromSupabase(imageUrls);
+    console.log(success, filePaths, "Deleted Images Number", deleted);
+  }
+
+  const url = `${API_BASE_URL}/odata/Product/DeleteProduct?product_id=${productId}`;
 
   try {
     console.log("🔵 Deleting product with ID:", productId);
@@ -191,7 +199,7 @@ export async function createProduct(productData) {
 
         const imageName =
           `${Date.now()}-${Math.random()}-${image.name}`.replaceAll("/", "");
-        const uploadPath = `products/${imageName}`;
+        const uploadPath = `/${imageName}`;
 
         const { data: imageData, error: imageError } = await supabase.storage
           .from("Products")
@@ -285,6 +293,129 @@ export async function createProduct(productData) {
     return data;
   } catch (error) {
     console.error("❌ createProduct error:", error);
+    throw error;
+  }
+}
+export async function updateProduct(productId, updateData) {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error("Unauthorized");
+    }
+    // 1. Handle image deletions from Supabase Storage
+    if (updateData.imagesToRemove?.length > 0) {
+      console.log("🗑️ Deleting images from Supabase...");
+      await deleteImagesFromSupabase(updateData.imagesToRemove);
+    }
+
+    // 2. Handle new image uploads to Supabase Storage
+    let uploadedImageUrls = [];
+    if (updateData.newImages?.length > 0) {
+      console.log(`📤 Uploading ${updateData.newImages.length} new images...`);
+
+      for (let i = 0; i < updateData.newImages.length; i++) {
+        const image = updateData.newImages[i];
+
+        const imageName =
+          `${Date.now()}-${Math.random()}-${image.name}`.replaceAll("/", "");
+
+        const { data: imageData, error: imageError } = await supabase.storage
+          .from("Products")
+          .upload(imageName, image, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (imageError) {
+          console.error(`❌ Error uploading image ${i + 1}:`, imageError);
+
+          // Rollback
+          if (uploadedImageUrls.length > 0) {
+            console.log("🔄 Rolling back uploaded images...");
+            const pathsToDelete = uploadedImageUrls.map((url) => {
+              const u = new URL(url);
+              const marker = "/storage/v1/object/public/Products/";
+              const idx = u.pathname.indexOf(marker);
+              return decodeURIComponent(u.pathname.slice(idx + marker.length));
+            });
+            await supabase.storage.from("Products").remove(pathsToDelete);
+          }
+
+          throw new Error(
+            `Failed to upload image ${i + 1}: ${imageError.message}`,
+          );
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from("Products")
+          .getPublicUrl(imageName);
+
+        uploadedImageUrls.push(publicUrlData.publicUrl);
+        console.log(
+          `✅ Uploaded image ${i + 1}/${updateData.newImages.length}`,
+        );
+      }
+    }
+
+    // 3. Prepare DTO matching C# backend
+    const productDTO = {
+      name: updateData.name || null,
+      description: updateData.description || null,
+      price: updateData.price ? parseFloat(updateData.price) : null,
+      stockQuantity: updateData.stock ? parseInt(updateData.stock) : null,
+      category: updateData.category || null,
+      discount: updateData.discount ? parseFloat(updateData.discount) : null,
+      tag: updateData.tags || null,
+
+      // Images
+      imageUrlsToRemove: updateData.imagesToRemove || null,
+      newImageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : null,
+
+      // Sizes
+      sizesToRemove:
+        updateData.sizesToRemove?.length > 0 ? updateData.sizesToRemove : null,
+      newSizes: updateData.newSizes?.length > 0 ? updateData.newSizes : null,
+
+      // Colors
+      colorsToRemove:
+        updateData.colorsToRemove?.length > 0
+          ? updateData.colorsToRemove
+          : null,
+      newColors: updateData.newColors?.length > 0 ? updateData.newColors : null,
+    };
+
+    console.log("📦 Sending update to API:", productDTO);
+
+    // 4. Call backend API
+    const response = await fetch(`${API_BASE_URL}/odata/Product/${productId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(productDTO),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Failed to update product";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.title || errorMessage;
+      } catch (e) {
+        errorMessage = `Server error: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.text();
+    console.log("✅ Product updated successfully:", result);
+
+    return {
+      success: true,
+      message: result,
+    };
+  } catch (error) {
+    console.error("❌ Error updating product:", error);
     throw error;
   }
 }

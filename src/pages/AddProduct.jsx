@@ -526,45 +526,6 @@ const AddProduct = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <nav className="bg-white shadow-md sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link to="/" className="flex items-center gap-2">
-                <span className="text-3xl">🛍️</span>
-                <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                  Shop-Easy
-                </span>
-              </Link>
-              <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
-                <Link
-                  to="/vendor/dashboard"
-                  className="hover:text-orange-600 transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <span>→</span>
-                <Link
-                  to="/vendor/products"
-                  className="hover:text-orange-600 transition-colors"
-                >
-                  Products
-                </Link>
-                <span>→</span>
-                <span className="text-gray-900 font-semibold">Add Product</span>
-              </div>
-            </div>
-            <Link
-              to="/vendor/products"
-              className="text-gray-700 hover:text-orange-600 font-semibold text-sm transition-colors"
-            >
-              ← Back to Products
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -1102,10 +1063,10 @@ const AddProduct = () => {
                 </Link>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isAddingProduct}
                   className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isLoading ? (
+                  {isAddingProduct ? (
                     <>
                       <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                       Adding Product...
