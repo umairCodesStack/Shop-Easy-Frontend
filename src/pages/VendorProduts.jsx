@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useGetStoreProducts } from "../hooks/useGetStoreProducts";
 
 import { useDeleteProduct } from "../hooks/useDeleteProduct";
+import { getUserData } from "../utils/jwtUtils";
 
 const VendorProducts = () => {
   const navigate = useNavigate();
@@ -20,12 +21,14 @@ const VendorProducts = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const userData = getUserData();
+  console.log("UserData", userData);
 
   const {
     products,
     error,
     isLoading: isStoreProductsLoading,
-  } = useGetStoreProducts(4);
+  } = useGetStoreProducts(userData.userId);
 
   console.log("Fetched products:", products);
 

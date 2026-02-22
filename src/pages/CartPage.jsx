@@ -1,71 +1,50 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import { useCart } from "../context/cartContext";
+import OrderSummary from "../components/orders/OrderSummary";
+import Navbar from "../components/common/Navbar";
 
 const CartPage = () => {
-  const navigate = useNavigate();
   const {
     cartItems,
     removeFromCart: removeItem,
     updateQuantity,
     clearCart,
-    getCartTotal,
-    getCartCount,
   } = useCart();
 
-  const calculateSubtotal = () => {
-    return cartItems.reduce(
-      (sum, item) => sum + item.finalPrice * item.quantity,
-      0,
-    );
-  };
-
-  const calculateSavings = () => {
-    return cartItems.reduce((sum, item) => {
-      if (item.originalPrice) {
-        return sum + (item.originalPrice - item.finalPrice) * item.quantity;
-      }
-      return sum;
-    }, 0);
-  };
-
-  const calculateShipping = () => {
-    const subtotal = calculateSubtotal();
-    return subtotal >= 50 ? 0 : 9.99;
-  };
-
-  const calculateTax = () => {
-    return calculateSubtotal() * 0.1; // 10% tax
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax();
-  };
-
-  const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      alert("Your cart is empty");
-      return;
+  // Group items by store
+  const groupedByStore = cartItems.reduce((acc, item) => {
+    if (!acc[item.storeId]) {
+      acc[item.storeId] = {
+        storeName: item.storeName,
+        storeId: item.storeId,
+        items: [],
+      };
     }
-    navigate("/checkout");
+    acc[item.storeId].items.push(item);
+    return acc;
+  }, {});
+
+  const storeGroups = Object.values(groupedByStore);
+
+  // Calculate overall totals
+  const calculateOverallTotal = () => {
+    return storeGroups.reduce((total, group) => {
+      const subtotal = group.items.reduce(
+        (sum, item) => sum + item.finalPrice * item.quantity,
+        0,
+      );
+      const shipping = subtotal >= 50 ? 0 : 9.99;
+      const tax = subtotal * 0.1;
+      return total + subtotal + shipping + tax;
+    }, 0);
   };
 
   // Empty Cart State
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Breadcrumb */}
-        <div className="bg-white border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Link to="/" className="hover:text-primary-600">
-                Home
-              </Link>
-              <span>›</span>
-              <span className="text-gray-900 font-medium">Shopping Cart</span>
-            </div>
-          </div>
-        </div>
+        <Navbar />
 
         {/* Empty Cart Content */}
         <div className="container mx-auto px-4 py-16">
@@ -93,6 +72,7 @@ const CartPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Breadcrumb */}
+      <Navbar />
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -115,7 +95,8 @@ const CartPage = () => {
               </h1>
               <p className="text-white/90">
                 {cartItems.length} {cartItems.length === 1 ? "item" : "items"}{" "}
-                in your cart
+                from {storeGroups.length}{" "}
+                {storeGroups.length === 1 ? "store" : "stores"}
               </p>
             </div>
             <button
@@ -132,34 +113,29 @@ const CartPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Group items by store */}
-            {Object.entries(
-              cartItems.reduce((acc, item) => {
-                if (!acc[item.storeName]) {
-                  acc[item.storeName] = [];
-                }
-                acc[item.storeName].push(item);
-                return acc;
-              }, {}),
-            ).map(([storeName, storeItems]) => (
+            {storeGroups.map((group) => (
               <div
-                key={storeName}
+                key={group.storeId}
                 className="bg-white rounded-xl shadow-lg overflow-hidden"
               >
                 {/* Store Header */}
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b flex items-center gap-2">
                   <span className="text-2xl">🏪</span>
                   <Link
-                    to={`/stores/${storeItems[0].storeId}`}
+                    to={`/stores/${group.storeId}`}
                     className="font-bold text-gray-900 hover:text-primary-600 transition-colors"
                   >
-                    {storeName}
+                    {group.storeName}
                   </Link>
+                  <span className="ml-auto text-sm text-gray-600">
+                    {group.items.length}{" "}
+                    {group.items.length === 1 ? "item" : "items"}
+                  </span>
                 </div>
 
                 {/* Store Items */}
                 <div className="divide-y">
-                  {storeItems.map((item) => (
+                  {group.items.map((item) => (
                     <div
                       key={item.id}
                       className="p-6 hover:bg-gray-50 transition-colors duration-300"
@@ -190,16 +166,16 @@ const CartPage = () => {
 
                           {/* Variants */}
                           <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
-                            {item.color && (
+                            {item.colors && (
                               <span className="flex items-center gap-1">
                                 <span className="font-semibold">Color:</span>{" "}
-                                {item.color}
+                                {item.colors}
                               </span>
                             )}
-                            {item.size && (
+                            {item.sizes && (
                               <span className="flex items-center gap-1">
                                 <span className="font-semibold">Size:</span>{" "}
-                                {item.size}
+                                {item.sizes}
                               </span>
                             )}
                           </div>
@@ -224,10 +200,13 @@ const CartPage = () => {
                               <div className="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden">
                                 <button
                                   onClick={() =>
-                                    updateQuantity(item.id, item.quantity - 1)
+                                    updateQuantity(
+                                      item.cartItemId || item.id,
+                                      item.quantity - 1,
+                                    )
                                   }
                                   disabled={item.quantity <= 1}
-                                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition-colors duration-300 font-bold"
+                                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition-colors duration-300 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   -
                                 </button>
@@ -236,7 +215,10 @@ const CartPage = () => {
                                 </span>
                                 <button
                                   onClick={() =>
-                                    updateQuantity(item.id, item.quantity + 1)
+                                    updateQuantity(
+                                      item.cartItemId || item.id,
+                                      item.quantity + 1,
+                                    )
                                   }
                                   disabled={item.quantity >= item.stockQuantity}
                                   className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition-colors duration-300 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
@@ -247,7 +229,9 @@ const CartPage = () => {
 
                               {/* Remove Button */}
                               <button
-                                onClick={() => removeItem(item.id)}
+                                onClick={() =>
+                                  removeItem(item.cartItemId || item.id)
+                                }
                                 className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-all duration-300"
                                 title="Remove item"
                               >
@@ -303,117 +287,77 @@ const CartPage = () => {
             </Link>
           </div>
 
-          {/* Order Summary Sidebar */}
+          {/* Order Summaries Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg p-6 sticky top-24">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-4 border-b">
-                Order Summary
-              </h2>
+            <div className="sticky top-24 space-y-6">
+              {/* Individual Store Order Summaries */}
+              {storeGroups.map((group) => (
+                <OrderSummary
+                  key={group.storeId}
+                  storeName={group.storeName}
+                  storeId={group.storeId}
+                  storeItems={group.items}
+                />
+              ))}
 
-              {/* Summary Items */}
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between text-gray-700">
-                  <span>
-                    Subtotal (
-                    {cartItems.reduce((sum, item) => sum + item.quantity, 0)}{" "}
-                    items)
-                  </span>
-                  <span className="font-semibold">
-                    ${calculateSubtotal().toFixed(2)}
-                  </span>
-                </div>
-
-                {calculateSavings() > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Savings</span>
-                    <span className="font-semibold">
-                      -${calculateSavings().toFixed(2)}
+              {/* Overall Total (if multiple stores) */}
+              {storeGroups.length > 1 && (
+                <div className="bg-gradient-to-br from-primary-50 to-secondary-50 rounded-xl shadow-lg p-6 border-2 border-primary-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    Overall Cart Total
+                  </h3>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">
+                      Total for all stores
+                    </span>
+                    <span className="text-2xl font-bold text-primary-600">
+                      ${calculateOverallTotal().toFixed(2)}
                     </span>
                   </div>
-                )}
-
-                <div className="flex justify-between text-gray-700">
-                  <span className="flex items-center gap-1">
-                    Shipping
-                    {calculateShipping() === 0 && (
-                      <span className="text-xs text-green-600 font-semibold">
-                        (FREE)
-                      </span>
-                    )}
-                  </span>
-                  <span className="font-semibold">
-                    {calculateShipping() === 0
-                      ? "FREE"
-                      : `$${calculateShipping().toFixed(2)}`}
-                  </span>
+                  <p className="text-xs text-gray-600 mt-3">
+                    Note: Separate orders will be placed for each store
+                  </p>
                 </div>
-
-                {calculateSubtotal() < 50 && calculateShipping() > 0 && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    💡 Add ${(50 - calculateSubtotal()).toFixed(2)} more for
-                    FREE shipping!
-                  </div>
-                )}
-
-                <div className="flex justify-between text-gray-700">
-                  <span>Tax (10%)</span>
-                  <span className="font-semibold">
-                    ${calculateTax().toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="pt-4 border-t mb-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-gray-900">Total</span>
-                  <span className="text-3xl font-bold text-primary-600">
-                    ${calculateTotal().toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Checkout Button */}
-              <button
-                onClick={handleCheckout}
-                className="w-full bg-primary-500 hover:bg-primary-600 text-white py-4 rounded-lg font-bold text-lg transition-all duration-300 hover:shadow-lg mb-4"
-              >
-                Proceed to Checkout
-              </button>
+              )}
 
               {/* Security Badges */}
-              <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>Secure checkout</span>
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="font-bold text-gray-900 mb-4">
+                  Secure Shopping
+                </h3>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Secure checkout</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Free returns within 30 days</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span>Money-back guarantee</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>Free returns within 30 days</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>Money-back guarantee</span>
-                </div>
-              </div>
 
-              {/* Payment Methods */}
-              <div className="mt-6 pt-6 border-t">
-                <p className="text-sm text-gray-600 mb-3 text-center">
-                  We Accept
-                </p>
-                <div className="flex justify-center gap-2 flex-wrap">
-                  <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
-                    💳 VISA
-                  </div>
-                  <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
-                    💳 MasterCard
-                  </div>
-                  <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
-                    💳 PayPal
-                  </div>
-                  <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
-                    💳 Amex
+                {/* Payment Methods */}
+                <div className="mt-6 pt-6 border-t">
+                  <p className="text-sm text-gray-600 mb-3 text-center">
+                    We Accept
+                  </p>
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
+                      💳 VISA
+                    </div>
+                    <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
+                      💳 MasterCard
+                    </div>
+                    <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
+                      💳 PayPal
+                    </div>
+                    <div className="bg-gray-100 px-3 py-2 rounded text-xs font-semibold">
+                      💳 Amex
+                    </div>
                   </div>
                 </div>
               </div>

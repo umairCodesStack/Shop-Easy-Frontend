@@ -1,14 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../../context/cartContext";
+import { getUserData } from "../../utils/jwtUtils";
+import { logout } from "../../services/authApi";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
   const { getCartCount } = useCart();
   const cartCount = getCartCount();
+
+  // Get user data on component mount and when auth state changes
+  useEffect(() => {
+    const data = getUserData();
+    setUserData(data);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -18,19 +27,27 @@ const Navbar = () => {
     }
   };
 
-  const handleLogin = () => {
-    // TODO: Implement actual login logic
-    alert("Login functionality - Connect to your backend");
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    alert("Logged out successfully");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setShowUserDropdown(false);
+      setUserData(null);
+      navigate("/login");
+      // Optional: You might not need window.location.reload() if you manage state properly
+      // window.location.reload();
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Still navigate to login even if logout fails
+      navigate("/login");
+    }
   };
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const getUserInitial = (name) => {
+    return name ? name.charAt(0).toUpperCase() : "U";
   };
 
   return (
@@ -101,8 +118,6 @@ const Navbar = () => {
               Stores
             </Link>
 
-            {/* Become a Vendor Button - NEW */}
-
             {/* Cart Button */}
             <Link
               to="/cart"
@@ -120,19 +135,96 @@ const Navbar = () => {
               </div>
             </Link>
 
-            {/* Login/User Button */}
-            {isLoggedIn ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-primary-50 px-4 py-2 rounded-full">
-                  <span className="text-2xl">👤</span>
-                  <span className="font-medium text-primary-700">User</span>
-                </div>
+            {/* User Section */}
+            {userData ? (
+              <div className="relative">
                 <button
-                  onClick={handleLogout}
-                  className="text-red-600 hover:text-red-700 font-medium transition-colors duration-300"
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className="flex items-center gap-3 bg-primary-50 hover:bg-primary-100 px-4 py-2 rounded-full transition-colors duration-300"
                 >
-                  Logout
+                  <div className="w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold">
+                    {getUserInitial(userData.name)}
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-gray-900 text-sm">
+                      {userData.name}
+                    </p>
+                    <p className="text-xs text-gray-500">{userData.role}</p>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${
+                      showUserDropdown ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
                 </button>
+
+                {/* Dropdown Menu */}
+                {showUserDropdown && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <p className="font-semibold text-gray-900">
+                        {userData.name}
+                      </p>
+                      <p className="text-sm text-gray-500">{userData.email}</p>
+                      <span className="inline-block mt-1 px-2 py-1 bg-primary-100 text-primary-700 text-xs font-semibold rounded">
+                        {userData.role}
+                      </span>
+                    </div>
+                    <Link
+                      to="/profile"
+                      onClick={() => setShowUserDropdown(false)}
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span>👤</span>
+                        <span>My Profile</span>
+                      </div>
+                    </Link>
+                    <Link
+                      to="/my-orders"
+                      onClick={() => setShowUserDropdown(false)}
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span>📦</span>
+                        <span>My Orders</span>
+                      </div>
+                    </Link>
+                    {userData.role === "Vendor" && (
+                      <Link
+                        to="/vendor/dashboard"
+                        onClick={() => setShowUserDropdown(false)}
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span>🏪</span>
+                          <span>Vendor Dashboard</span>
+                        </div>
+                      </Link>
+                    )}
+                    <div className="border-t border-gray-200 mt-2 pt-2">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span>🚪</span>
+                          <span>Logout</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <NavLink
@@ -142,13 +234,17 @@ const Navbar = () => {
                 Login
               </NavLink>
             )}
-            <Link
-              to="/vendor/register"
-              className="hidden xl:flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-4 py-2 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
-            >
-              <span>🏪</span>
-              <span>Sell</span>
-            </Link>
+
+            {/* Become a Vendor Button - Show only if not a vendor */}
+            {(!userData || userData.role !== "Vendor") && (
+              <Link
+                to="/vendor/register"
+                className="hidden xl:flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-4 py-2 rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+              >
+                <span>🏪</span>
+                <span>Sell</span>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -248,15 +344,17 @@ const Navbar = () => {
               Stores
             </Link>
 
-            {/* Become a Vendor - Mobile - NEW */}
-            <Link
-              to="/vendor/register"
-              onClick={toggleMobileMenu}
-              className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white rounded-lg font-semibold transition-all duration-300 shadow-md"
-            >
-              <span className="text-xl">🏪</span>
-              <span>Become a Vendor</span>
-            </Link>
+            {/* Become a Vendor - Mobile - Show only if not a vendor */}
+            {(!userData || userData.role !== "Vendor") && (
+              <Link
+                to="/vendor/register"
+                onClick={toggleMobileMenu}
+                className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white rounded-lg font-semibold transition-all duration-300 shadow-md"
+              >
+                <span className="text-xl">🏪</span>
+                <span>Become a Vendor</span>
+              </Link>
+            )}
 
             <Link
               to="/cart"
@@ -274,24 +372,67 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* Mobile Login/Logout */}
+            {/* Mobile User Section */}
             <div className="pt-3 border-t border-gray-200">
-              {isLoggedIn ? (
+              {userData ? (
                 <>
-                  <div className="flex items-center gap-3 px-4 py-3 bg-primary-50 rounded-lg mb-2">
-                    <span className="text-2xl">👤</span>
-                    <span className="font-medium text-primary-700">
-                      User Account
+                  <div className="px-4 py-3 bg-primary-50 rounded-lg mb-3">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                        {getUserInitial(userData.name)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {userData.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {userData.email}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-block px-2 py-1 bg-primary-200 text-primary-800 text-xs font-semibold rounded">
+                      {userData.role}
                     </span>
                   </div>
+
+                  <Link
+                    to="/profile"
+                    onClick={toggleMobileMenu}
+                    className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-300"
+                  >
+                    <span className="text-xl">👤</span>
+                    <span>My Profile</span>
+                  </Link>
+
+                  <Link
+                    to="/orders"
+                    onClick={toggleMobileMenu}
+                    className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-300"
+                  >
+                    <span className="text-xl">📦</span>
+                    <span>My Orders</span>
+                  </Link>
+
+                  {userData.role === "Vendor" && (
+                    <Link
+                      to="/vendor/dashboard"
+                      onClick={toggleMobileMenu}
+                      className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-300"
+                    >
+                      <span className="text-xl">🏪</span>
+                      <span>Vendor Dashboard</span>
+                    </Link>
+                  )}
+
                   <button
                     onClick={() => {
                       handleLogout();
                       toggleMobileMenu();
                     }}
-                    className="w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors duration-300"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors duration-300 mt-2"
                   >
-                    Logout
+                    <span className="text-xl">🚪</span>
+                    <span>Logout</span>
                   </button>
                 </>
               ) : (
@@ -306,6 +447,14 @@ const Navbar = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Click outside to close dropdown */}
+      {showUserDropdown && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowUserDropdown(false)}
+        />
       )}
     </nav>
   );

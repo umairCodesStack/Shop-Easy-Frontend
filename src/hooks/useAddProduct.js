@@ -19,7 +19,6 @@ export function useAddProduct() {
       navigate("/vendor/products");
     },
     onError: (error) => {
-      console.error("Error adding product:", error);
       toast.error(error.message || "Failed to add product");
     },
   });

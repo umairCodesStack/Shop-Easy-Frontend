@@ -25,17 +25,11 @@ const Home = () => {
     isLoading: isLoadingCategories,
     error: errorCategories,
   } = useGetCategories();
-  console.log("Categories from API:", categories);
 
   const categoriesData =
     categories?.map((categoryName) => {
       const cleanName = categoryName.toLowerCase().trim(); // Add .trim() here!
-      console.log(
-        "Mapping category:",
-        categoryName,
-        "Icon:",
-        CATEGORY_ICONS[cleanName],
-      );
+
       return {
         id: cleanName.replace(/\s+/g, "-"),
         name: categoryName.trim(), // Also trim the display name

@@ -3,6 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import ProductCard from "../components/products/ProductCard";
 import useGetProducts from "../hooks/useGetProducts";
 import { PageSize as pageSize } from "../utils/constants";
+import Navbar from "../components/common/Navbar";
 const Products = () => {
   const [searchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
@@ -13,7 +14,7 @@ const Products = () => {
     isLoading: loading,
     error,
   } = useGetProducts();
-
+  console.log("Fetched Products", allProducts);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Get unique categories
@@ -84,14 +85,6 @@ const Products = () => {
     const endIndex = startIndex + pageSize;
     return filteredProducts.slice(startIndex, endIndex);
   }, [filteredProducts, currentPage, pageSize]);
-
-  console.log("=== CLIENT-SIDE PAGINATION ===");
-  console.log("All Products:", allProducts.length);
-  console.log("Filtered Products:", filteredProducts.length);
-  console.log("Current Page:", currentPage);
-  console.log("Total Pages:", totalPages);
-  console.log("Showing:", paginatedProducts.length);
-  console.log("==============================");
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -187,18 +180,7 @@ const Products = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Link to="/" className="hover:text-primary-600">
-              Home
-            </Link>
-            <span>›</span>
-            <span className="text-gray-900 font-medium">Products</span>
-          </div>
-        </div>
-      </div>
+      <Navbar />
 
       {/* Page Header */}
       <div className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white py-8">

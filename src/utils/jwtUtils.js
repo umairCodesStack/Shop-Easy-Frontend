@@ -23,6 +23,7 @@ export const getUserIdFromToken = (token) => {
 };
 export function getUserData() {
   const token = localStorage.getItem("authToken");
+  if (!token) return null;
   const userData = jwtDecode(token);
-  return userData;
+  return userData ? userData : null;
 }

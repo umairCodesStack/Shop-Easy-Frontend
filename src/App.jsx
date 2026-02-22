@@ -24,6 +24,10 @@ import VendorAnalytics from "./pages/VendorAnalytics";
 import VendorStoreSettings from "./pages/VendorStoreSettings";
 import VendorLayout from "./components/vendor/VendorLayout";
 import VendorProtectedRoute from "./pages/VendorProtectedRoute";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
+import ProtectedCheckoutRoute from "./pages/ProtectedCheckoutRoute";
+import Orders from "./pages/Orders";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,7 +77,16 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
             <Route path="/vendor/register" element={<VendorRegister />} />
-
+            <Route path="/my-orders" element={<Orders />} />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedCheckoutRoute>
+                  <CheckoutPage />
+                </ProtectedCheckoutRoute>
+              }
+            />
+            <Route path="/order-success" element={<OrderSuccessPage />} />
             {/* Customer Protected Routes */}
             <Route path="/cart" element={<CartPage />} />
 

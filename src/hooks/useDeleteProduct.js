@@ -19,7 +19,6 @@ export function useDeleteProduct() {
     },
 
     onError: (err) => {
-      console.error("Error deleting product:", err);
       toast.error("Failed to delete product");
     },
   });

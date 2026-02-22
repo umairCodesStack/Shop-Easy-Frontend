@@ -48,17 +48,15 @@ export async function getHotDealsProduct() {
   const url = `${API_BASE_URL}/odata/Product?$filter=tolower(Tag) eq 'hot deal'`;
 
   try {
-    console.log("Fetching hot deals products:", url);
     const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Error response:", errorText);
+
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("Hot deals products data received:", data);
     return data.value || data;
   } catch (error) {
     console.error("Error fetching hot deals products:", error);
@@ -77,7 +75,7 @@ export async function getCategories() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    console.log("Categories data received:", data);
+
     return data.value || data;
   } catch (error) {
     console.error("Error fetching categories:", error);

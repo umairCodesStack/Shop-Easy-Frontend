@@ -6,12 +6,6 @@ import ProductCardSkeleton from "./ProductCardSkeleton";
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
 
-  const handleAddToCart = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addToCart(product);
-  };
-
   return (
     <Link
       to={`/products/${product.id}`}
@@ -77,13 +71,13 @@ const ProductCard = ({ product }) => {
             </span>
           </div>
 
-          <button
+          {/* <button
             onClick={handleAddToCart}
             className="bg-primary-500 hover:bg-primary-600 text-white p-3 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95 shadow-lg"
             title="Add to Cart"
           >
             🛒
-          </button>
+          </button> */}
         </div>
       </div>
     </Link>

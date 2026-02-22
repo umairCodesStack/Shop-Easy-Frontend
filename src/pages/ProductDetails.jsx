@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import useGetProductById from "../hooks/useGetProductById";
+import { useCart } from "../context/cartContext";
+import Navbar from "../components/common/Navbar";
 
 // Helper function to get color name from hex value
 const getColorName = (hex) => {
@@ -62,6 +64,7 @@ const ProductDetails = () => {
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
+  const { addToCart } = useCart();
 
   const { data: apiProduct, isLoading, error } = useGetProductById(id);
 
@@ -84,7 +87,7 @@ const ProductDetails = () => {
             : getMockSizes(apiProduct.category),
 
         // Mock data for store (until API provides it)
-        storeId: 1,
+        storeId: apiProduct.storeId,
         storeRating: 4.8,
         //soldCount: Math.floor(Math.random() * 5000) + 1000,
         totalReviews: apiProduct.reviewsCount || 234,
@@ -199,9 +202,25 @@ const ProductDetails = () => {
       alert("Please select a color");
       return;
     }
-    alert(
-      `Added to cart: ${quantity} x ${product.name}${selectedSize ? ` (${selectedSize})` : ""}${selectedColor ? ` (${selectedColor})` : ""}`,
-    );
+    console.log("Product Details", product);
+
+    const productForCart = {
+      id: product.id,
+      productName: product.name,
+      colors: selectedColor,
+      sizes: selectedSize,
+      quantity,
+      storeName: product.storeName,
+      stockQuantity: product.stockQuantity,
+      imageUrl: product.imageUrls[0],
+      storeId: product.storeId,
+      originalPrice: product.originalPrice,
+      finalPrice: product.finalPrice,
+      storeLogo: product.storeLogoUrl,
+      vendorId: product.vendorId,
+    };
+    console.log("Product for cart", productForCart);
+    addToCart(productForCart);
     // TODO: Implement actual cart functionality
   };
 
@@ -264,6 +283,7 @@ const ProductDetails = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navbar />
       {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
