@@ -3,9 +3,17 @@ import { Link } from "react-router-dom";
 import { useCart } from "../../context/cartContext";
 import ProductCardSkeleton from "./ProductCardSkeleton";
 
+// Utility function to truncate description
+function getShortDescription(description, maxLength = 80) {
+  if (!description) return "";
+  return description.length > maxLength
+    ? description.substring(0, maxLength) + "..."
+    : description;
+}
+
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
-
+  console.log(product);
   return (
     <Link
       to={`/products/${product.id}`}
@@ -47,16 +55,12 @@ const ProductCard = ({ product }) => {
           {product.name}
         </h3>
 
-        {/* Rating */}
-        <div className="flex items-center gap-2 mb-3 text-sm">
-          <div className="flex items-center gap-1 text-yellow-500 font-semibold">
-            <span>⭐</span>
-            <span>{product.rating || "4.5"}</span>
-          </div>
-          <span className="text-gray-400">
-            {product.reviewsCount > 0 && `(${product.reviewsCount})`}
-          </span>
-        </div>
+        {/* Product Description (Truncated) */}
+        {product.description && (
+          <p className="mb-2 text-sm text-gray-500">
+            {getShortDescription(product.description, 80)}
+          </p>
+        )}
 
         {/* Price & Add to Cart */}
         <div className="mt-auto flex items-center justify-between border-t pt-3">

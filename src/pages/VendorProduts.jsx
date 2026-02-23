@@ -22,15 +22,12 @@ const VendorProducts = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const userData = getUserData();
-  console.log("UserData", userData);
 
   const {
     products,
     error,
     isLoading: isStoreProductsLoading,
   } = useGetStoreProducts(userData.userId);
-
-  console.log("Fetched products:", products);
 
   const categories = ["All", "Electronics", "Accessories", "Clothing", "Home"];
 

@@ -1,87 +1,86 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useGetStoreProducts } from "../hooks/useGetStoreProducts";
+import { getUserData } from "../utils/jwtUtils";
+import { useGetVendorOrder } from "../hooks/useGetVendorOrder";
+import Orders from "./Orders";
+import VendorOrders from "./VendorOrders";
+import useGetStore from "../hooks/useGetStore";
+import { useGetCustomers } from "../hooks/useGetCustomers";
 
 const VendorDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock vendor data - Replace with actual API call
-  const [vendorData, setVendorData] = useState({
-    store: {
-      name: "TechVault Store",
-      logo: "💻",
-      isActive: true,
-      rating: 4.8,
-      totalReviews: 234,
-    },
-    stats: {
-      totalProducts: 156,
-      totalOrders: 1243,
-      pendingOrders: 23,
-      totalRevenue: 45670.5,
-      monthlyRevenue: 12340.0,
-      totalCustomers: 892,
-    },
-    recentOrders: [
-      {
-        id: "#ORD-12345",
-        customerName: "John Doe",
-        product: "Wireless Headphones",
-        amount: 89.99,
-        status: "pending",
-        date: "2026-02-15",
-      },
-      {
-        id: "#ORD-12344",
-        customerName: "Jane Smith",
-        product: "Gaming Mouse",
-        amount: 45.5,
-        status: "processing",
-        date: "2026-02-15",
-      },
-      {
-        id: "#ORD-12343",
-        customerName: "Bob Johnson",
-        product: "Mechanical Keyboard",
-        amount: 129.99,
-        status: "shipped",
-        date: "2026-02-14",
-      },
-      {
-        id: "#ORD-12342",
-        customerName: "Alice Williams",
-        product: "USB-C Hub",
-        amount: 35.0,
-        status: "delivered",
-        date: "2026-02-14",
-      },
-    ],
-    topProducts: [
-      {
-        id: 1,
-        name: "Wireless Headphones Pro",
-        sales: 234,
-        revenue: 20970.66,
-        stock: 45,
-        image: "🎧",
-      },
-      {
-        id: 2,
-        name: "Gaming Mouse RGB",
-        sales: 189,
-        revenue: 8595.5,
-        stock: 67,
-        image: "🖱️",
-      },
-      {
-        id: 3,
-        name: "Mechanical Keyboard",
-        sales: 156,
-        revenue: 20264.44,
-        stock: 23,
-        image: "⌨️",
-      },
-    ],
+  const userData = getUserData();
+
+  const {
+    products,
+    error,
+    isLoading: isStoreProductsLoading,
+  } = useGetStoreProducts(userData.userId);
+  const {
+    data: vendorOrders,
+    isLoading: loadingOrders,
+    error: errorOders,
+  } = useGetVendorOrder(userData.userId);
+  const {
+    data: customers,
+    isLoading: loadingCustomers,
+    error: customersError,
+  } = useGetCustomers(userData.userId);
+  console.log(customers);
+  const totalProducts = products ? products.length : 0;
+  const totalOrders = vendorOrders ? vendorOrders.length : 0;
+  const pendingOrders =
+    vendorOrders?.filter((order) => order.status === "Pending").length || 0;
+  const totalCustomers = customers?.length || 0;
+  const topProducts =
+    products?.filter((product) => product.rating >= 4.5) || [];
+  const productSales = {};
+
+  vendorOrders?.forEach((order) => {
+    order.products?.forEach((item) => {
+      if (productSales[item.productId]) {
+        productSales[item.productId] += item.quantity; // add quantity
+      } else {
+        productSales[item.productId] = item.quantity;
+      }
+    });
   });
+  const topProductsWithSales =
+    products?.map((product) => ({
+      ...product,
+      totalSold: productSales[product.id] || 0,
+    })) || [];
+  const top5SellingProducts = topProductsWithSales
+    .sort((a, b) => b.totalSold - a.totalSold)
+    .slice(0, 5);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // start of today
+
+  const twoDaysAgo = new Date(today);
+  twoDaysAgo.setDate(today.getDate() - 2); // 2 days ago
+
+  const recentOrders = vendorOrders?.filter((order) => {
+    if (!order.orderDate) return false;
+    const orderDate = new Date(order.orderDate);
+    orderDate.setHours(0, 0, 0, 0); // ignore time
+    return orderDate >= twoDaysAgo && orderDate <= today; // last 2 days
+  });
+  const {
+    storeData,
+    error: storeError,
+    isLoading: storeLoading,
+  } = useGetStore(userData.userId);
+  //const { createdAt: JoinedDate } = storeData;
+  function formatDate(joinedDate) {
+    const date = new Date(joinedDate);
+    const options = { year: "numeric", month: "short" };
+    return date.toLocaleDateString("en-US", options);
+  }
+
+  // Example:
 
   useEffect(() => {
     // Simulate loading data
@@ -153,7 +152,7 @@ const VendorDashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Revenue */}
-        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+        {/* <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-4xl">💰</span>
             <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
@@ -169,22 +168,20 @@ const VendorDashboard = () => {
           <p className="text-white/80 text-xs">
             ${vendorData.stats.monthlyRevenue.toLocaleString()} this month
           </p>
-        </div>
+        </div> */}
 
         {/* Total Orders */}
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-4xl">📦</span>
             <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
-              {vendorData.stats.pendingOrders} Pending
+              {pendingOrders} Pending
             </div>
           </div>
           <h3 className="text-white/80 text-sm font-medium mb-1">
             Total Orders
           </h3>
-          <p className="text-3xl font-bold mb-2">
-            {vendorData.stats.totalOrders.toLocaleString()}
-          </p>
+          <p className="text-3xl font-bold mb-2">{totalOrders}</p>
           <p className="text-white/80 text-xs">+12% from last month</p>
         </div>
 
@@ -199,9 +196,7 @@ const VendorDashboard = () => {
           <h3 className="text-white/80 text-sm font-medium mb-1">
             Total Products
           </h3>
-          <p className="text-3xl font-bold mb-2">
-            {vendorData.stats.totalProducts}
-          </p>
+          <p className="text-3xl font-bold mb-2">{totalProducts}</p>
           <p className="text-white/80 text-xs">Across all categories</p>
         </div>
 
@@ -209,19 +204,17 @@ const VendorDashboard = () => {
         <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-4xl">👥</span>
-            <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
+            {/* <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
               {vendorData.store.rating} ⭐
-            </div>
+            </div> */}
           </div>
           <h3 className="text-white/80 text-sm font-medium mb-1">
             Total Customers
           </h3>
-          <p className="text-3xl font-bold mb-2">
-            {vendorData.stats.totalCustomers.toLocaleString()}
-          </p>
-          <p className="text-white/80 text-xs">
+          <p className="text-3xl font-bold mb-2">{totalCustomers || 0}</p>
+          {/* <p className="text-white/80 text-xs">
             {vendorData.store.totalReviews} reviews
-          </p>
+          </p> */}
         </div>
       </div>
 
@@ -254,7 +247,7 @@ const VendorDashboard = () => {
                       Customer
                     </th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
-                      Product
+                      Status
                     </th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
                       Amount
@@ -268,7 +261,7 @@ const VendorDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {vendorData.recentOrders.map((order) => (
+                  {recentOrders?.map((order) => (
                     <tr
                       key={order.id}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -284,11 +277,11 @@ const VendorDashboard = () => {
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-gray-700">{order.product}</span>
+                        <span className="text-gray-700">{order.status}</span>
                       </td>
                       <td className="py-4 px-4">
                         <span className="font-semibold text-gray-900">
-                          ${order.amount}
+                          ${order.totalPrice}
                         </span>
                       </td>
                       <td className="py-4 px-4">
@@ -328,31 +321,36 @@ const VendorDashboard = () => {
               </Link>
             </div>
 
-            <div className="space-y-4">
-              {vendorData.topProducts.map((product) => (
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {top5SellingProducts?.map((product) => (
                 <div
                   key={product.id}
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm">
-                      {product.image}
+                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm overflow-hidden">
+                      <img
+                        src={product.imageUrls[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900">
                         {product.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {product.sales} sales · Stock: {product.stock}
+                        Sales: {product.totalSold} - Stock:{" "}
+                        {product.stockQuantity}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">
-                      ${product.revenue.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500">Revenue</p>
-                  </div>
+                  {/* <div className="text-right">
+        <p className="font-bold text-gray-900">
+          ${product.revenue.toLocaleString()}
+        </p>
+        <p className="text-xs text-gray-500">Revenue</p>
+      </div> */}
                 </div>
               ))}
             </div>
@@ -391,7 +389,7 @@ const VendorDashboard = () => {
                     View Orders
                   </p>
                   <p className="text-xs text-gray-500">
-                    {vendorData.stats.pendingOrders} pending
+                    {pendingOrders} pending
                   </p>
                 </div>
               </Link>
@@ -425,7 +423,7 @@ const VendorDashboard = () => {
           </div>
 
           {/* Store Performance */}
-          <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-lg p-6 text-white">
+          {/* <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-lg p-6 text-white">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <span>📈</span>
               Store Performance
@@ -476,7 +474,7 @@ const VendorDashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Store Status */}
           <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -495,16 +493,20 @@ const VendorDashboard = () => {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Products</span>
                 <span className="font-semibold text-gray-900">
-                  {vendorData.stats.totalProducts}
+                  {totalProducts}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Views</span>
                 <span className="font-semibold text-gray-900">12.4K</span>
-              </div>
+              </div> */}
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Joined</span>
-                <span className="font-semibold text-gray-900">Jan 2026</span>
+                <span className="font-semibold text-gray-900">
+                  {!storeLoading
+                    ? formatDate(storeData?.createdAt)
+                    : "Loading Date"}
+                </span>
               </div>
             </div>
           </div>

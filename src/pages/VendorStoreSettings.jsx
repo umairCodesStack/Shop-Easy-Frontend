@@ -60,7 +60,6 @@ const VendorStoreSettings = () => {
   // Update ownerData ONLY when fetchedUserData initially loads
   useEffect(() => {
     if (fetchedUserData && !isUserLoading) {
-      console.log("✅ Setting owner data from API:", fetchedUserData);
       setOwnerData({
         id: fetchedUserData.id || userData?.userId,
         name: fetchedUserData.name || "",
@@ -113,14 +112,12 @@ const VendorStoreSettings = () => {
 
   const handleOwnerChange = (e) => {
     const { name, value } = e.target;
-    console.log("🔵 Field changed:", name, "->", value);
 
     // Map 'fullName' input to 'name' in ownerData
     const fieldName = name === "fullName" ? "name" : name;
 
     setOwnerData((prev) => {
       const updated = { ...prev, [fieldName]: value };
-      console.log("📝 Updated ownerData:", updated);
       return updated;
     });
   };
@@ -264,8 +261,6 @@ const VendorStoreSettings = () => {
     e.preventDefault();
 
     try {
-      console.log("🔵 Current ownerData state:", ownerData);
-
       if (!ownerData.id) {
         toast.error("User ID is missing!");
         console.error("❌ No user ID in ownerData:", ownerData);
@@ -280,11 +275,8 @@ const VendorStoreSettings = () => {
         phoneNumber: ownerData.phoneNumber || "",
       };
 
-      console.log("📤 Sending update payload:", updatePayload);
-
       await updateUser(updatePayload);
 
-      console.log("✅ Update successful!");
       toast.success("Account information updated successfully!");
     } catch (err) {
       console.error("❌ Update account error:", err);

@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useGetVendorOrder } from "../hooks/useGetVendorOrder";
 import { getUserData } from "../utils/jwtUtils";
 
+import { useUpdateOrderStatus } from "../hooks/useUpdateOrderStatus";
+
 const VendorOrders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -14,8 +16,12 @@ const VendorOrders = () => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const { userId } = getUserData();
-  const { data: orders, isLoading, error } = useGetVendorOrder(userId);
-
+  const { data: orders, isLoading, error, refetch } = useGetVendorOrder(userId);
+  const {
+    mutate: updateOrderStatus,
+    isLoading: updatingStatus,
+    error: updateError,
+  } = useUpdateOrderStatus();
   const getStatusColor = (status) => {
     const normalizedStatus = status?.toLowerCase();
     switch (normalizedStatus) {
@@ -29,6 +35,10 @@ const VendorOrders = () => {
         return "bg-green-100 text-green-800 border-green-200";
       case "cancelled":
         return "bg-red-100 text-red-800 border-red-200";
+      case "cancellation requested":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "cancellation rejected":
+        return "bg-pink-100 text-pink-800 border-pink-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -48,9 +58,34 @@ const VendorOrders = () => {
     }
   };
 
+  const getStatusIcon = (status) => {
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case "pending":
+        return "⏳";
+      case "processing":
+        return "⚙️";
+      case "shipped":
+        return "🚚";
+      case "delivered":
+        return "✅";
+      case "cancelled":
+        return "❌";
+      case "cancellation requested":
+        return "🛑";
+      case "cancellation rejected":
+        return "⚠️";
+      default:
+        return "📦";
+    }
+  };
+
   const handleStatusUpdate = (orderId, newStatus) => {
-    // TODO: Call update API
-    console.log(`Updating order ${orderId} to ${newStatus}`);
+    try {
+      updateOrderStatus({ orderId, newStatus });
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
   };
 
   // Filter orders
@@ -144,6 +179,13 @@ const VendorOrders = () => {
     cancelled:
       orders?.filter((o) => o.status?.toLowerCase() === "cancelled").length ||
       0,
+    cancellationRequested:
+      orders?.filter(
+        (o) => o.status?.toLowerCase() === "cancellation requested",
+      ).length || 0,
+    cancellationRejected:
+      orders?.filter((o) => o.status?.toLowerCase() === "cancellation rejected")
+        .length || 0,
   };
 
   if (isLoading) {
@@ -191,48 +233,62 @@ const VendorOrders = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-4 shadow-md">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">📦</div>
             <p className="text-2xl font-bold text-gray-900">
               {orderStats.total}
             </p>
             <p className="text-xs text-gray-600">Total Orders</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-md">
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">⏳</div>
             <p className="text-2xl font-bold text-yellow-600">
               {orderStats.pending}
             </p>
             <p className="text-xs text-gray-600">Pending</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-md">
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">⚙️</div>
             <p className="text-2xl font-bold text-blue-600">
               {orderStats.processing}
             </p>
             <p className="text-xs text-gray-600">Processing</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-md">
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">🚚</div>
             <p className="text-2xl font-bold text-purple-600">
               {orderStats.shipped}
             </p>
             <p className="text-xs text-gray-600">Shipped</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-md">
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">✅</div>
             <p className="text-2xl font-bold text-green-600">
               {orderStats.delivered}
             </p>
             <p className="text-xs text-gray-600">Delivered</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-md">
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">❌</div>
             <p className="text-2xl font-bold text-red-600">
               {orderStats.cancelled}
             </p>
             <p className="text-xs text-gray-600">Cancelled</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-2xl mb-2">🛑</div>
+            <p className="text-2xl font-bold text-orange-600">
+              {orderStats.cancellationRequested}
+            </p>
+            <p className="text-xs text-gray-600">Cancel Pending</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-2xl mb-2">⚠️</div>
+            <p className="text-2xl font-bold text-pink-600">
+              {orderStats.cancellationRejected}
+            </p>
+            <p className="text-xs text-gray-600">Cancel Rejected</p>
           </div>
         </div>
 
@@ -274,6 +330,12 @@ const VendorOrders = () => {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="cancellation requested">
+                  Cancellation Requested
+                </option>
+                <option value="cancellation rejected">
+                  Cancellation Rejected
+                </option>
               </select>
             </div>
 
@@ -345,8 +407,9 @@ const VendorOrders = () => {
                         <span
                           className={`px-4 py-2 rounded-lg text-sm font-semibold border ${getStatusColor(
                             order.status,
-                          )}`}
+                          )} flex items-center gap-1`}
                         >
+                          <span>{getStatusIcon(order.status)}</span>
                           {order.status}
                         </span>
                         {order.paymentStatus && (
@@ -365,6 +428,36 @@ const VendorOrders = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Cancellation Request Notice */}
+                    {order.status?.toLowerCase() ===
+                      "cancellation requested" && (
+                      <div className="mb-4 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+                        <p className="text-sm font-semibold text-orange-700 mb-1 flex items-center gap-2">
+                          <span>🛑</span>
+                          Action Required: Cancellation Request Pending
+                        </p>
+                        <p className="text-sm text-orange-600">
+                          Customer has requested to cancel this order. Please
+                          review and take action.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Cancellation Rejected Notice */}
+                    {order.status?.toLowerCase() ===
+                      "cancellation rejected" && (
+                      <div className="mb-4 p-4 bg-pink-50 rounded-lg border-2 border-pink-200">
+                        <p className="text-sm font-semibold text-pink-700 mb-1 flex items-center gap-2">
+                          <span>⚠️</span>
+                          Cancellation Request Rejected
+                        </p>
+                        <p className="text-sm text-pink-600">
+                          You have rejected the customer's cancellation request.
+                          The order will proceed as normal.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Customer Info */}
                     <div className="bg-gray-50 rounded-lg p-4 mb-4">
@@ -470,13 +563,13 @@ const VendorOrders = () => {
                     )}
 
                     {/* Cancel Reason */}
-                    {order.cancelReason && (
+                    {order.cancellationReason && (
                       <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 font-semibold mb-1">
                           Cancellation Reason
                         </p>
-                        <p className="font-semibold text-red-600">
-                          {order.cancelReason}
+                        <p className="text-sm text-red-600">
+                          {order.cancellationReason}
                         </p>
                       </div>
                     )}
@@ -607,14 +700,51 @@ const VendorOrders = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Update Order Status
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-2">
               Order ID:{" "}
               <span className="font-semibold">ORD-{selectedOrder.id}</span>
             </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Current Status:{" "}
+              <span className="font-semibold">{selectedOrder.status}</span>
+            </p>
+
+            {selectedOrder.status?.toLowerCase() ===
+              "cancellation requested" && (
+              <div className="mb-6 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+                <p className="text-sm font-semibold text-orange-700 mb-2">
+                  Customer Cancellation Request
+                </p>
+                <p className="text-sm text-orange-600">
+                  Please choose whether to approve or reject the cancellation
+                  request.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3 mb-6">
-              {["pending", "processing", "shipped", "delivered"].map(
-                (status) => (
+              {[
+                "pending",
+                "processing",
+                "shipped",
+                "delivered",
+                "reject cancellation",
+                "cancell",
+              ]
+                .filter((status) => {
+                  // Only show "reject cancellation" and "cancell" if current status is "cancellation requested"
+                  if (
+                    status === "reject cancellation" ||
+                    status === "cancell"
+                  ) {
+                    return (
+                      selectedOrder.status?.toLowerCase() ===
+                      "cancellation requested"
+                    );
+                  }
+                  return true;
+                })
+                .map((status) => (
                   <button
                     key={status}
                     onClick={() => {
@@ -626,15 +756,22 @@ const VendorOrders = () => {
                     className={`w-full p-4 rounded-lg font-semibold transition-all ${
                       selectedOrder.status?.toLowerCase() === status
                         ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-orange-50 hover:bg-orange-100 text-orange-600 border-2 border-orange-200"
+                        : status === "cancell"
+                          ? "bg-red-50 hover:bg-red-100 text-red-600 border-2 border-red-200"
+                          : status === "reject cancellation"
+                            ? "bg-pink-50 hover:bg-pink-100 text-pink-600 border-2 border-pink-200"
+                            : "bg-orange-50 hover:bg-orange-100 text-orange-600 border-2 border-orange-200"
                     }`}
                   >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status === "cancell"
+                      ? "✅ Approve Cancellation"
+                      : status === "reject cancellation"
+                        ? "❌ Reject Cancellation"
+                        : status.charAt(0).toUpperCase() + status.slice(1)}
                     {selectedOrder.status?.toLowerCase() === status &&
                       " (Current)"}
                   </button>
-                ),
-              )}
+                ))}
             </div>
 
             <button

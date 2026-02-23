@@ -8,6 +8,8 @@ import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON } from "../utils/CatagoreyIcons";
 import ProductCardSkeleton from "../components/products/ProductCardSkeleton";
 import Footer from "../components/common/Footer";
 import Navbar from "../components/common/Navbar";
+import StoreCard from "../components/vendor/StoreCard";
+import { useGetAllStores } from "../hooks/useGetAllStores";
 
 const Home = () => {
   const {
@@ -36,36 +38,12 @@ const Home = () => {
         icon: CATEGORY_ICONS[cleanName] || DEFAULT_CATEGORY_ICON,
       };
     }) || [];
-  // Top Vendors
-  const topVendorsData = [
-    {
-      id: 1,
-      name: "TechVault Store",
-      description: "Premium electronics and gadgets",
-      logo: "💻",
-      rating: 4.8,
-      totalProducts: 234,
-      totalSales: 5420,
-    },
-    {
-      id: 2,
-      name: "Fashion Gallery",
-      description: "Trendy fashion for everyone",
-      logo: "👗",
-      rating: 4.7,
-      totalProducts: 567,
-      totalSales: 8920,
-    },
-    {
-      id: 3,
-      name: "Sports Arena",
-      description: "Quality sports equipment",
-      logo: "⚽",
-      rating: 4.9,
-      totalProducts: 189,
-      totalSales: 3210,
-    },
-  ];
+  const { data: stores, isLoading: storesLoading, error } = useGetAllStores();
+  const topStores =
+    stores?.filter(
+      (store) =>
+        store.ownerId === 4 || store.ownerId === 35 || store.ownerId === 43,
+    ) || [];
 
   return (
     <>
@@ -252,7 +230,7 @@ const Home = () => {
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
                   <span className="text-4xl">🏪</span>
-                  Featured Stores
+                  Our Featured Stores
                 </h2>
                 <p className="text-gray-600 text-lg">
                   Shop from top-rated vendors
@@ -270,56 +248,13 @@ const Home = () => {
             </div>
 
             {/* Vendors Grid */}
+            {/* Vendors Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {topVendorsData.map((vendor) => (
-                <Link
-                  key={vendor.id}
-                  to={`/stores/${vendor.id}`}
-                  className="group bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-primary-500"
-                >
-                  {/* Vendor Logo */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-4xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      {vendor.logo}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-primary-600 transition-colors">
-                        {vendor.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {vendor.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Vendor Stats */}
-                  <div className="flex justify-around items-center bg-white rounded-xl p-4 shadow-sm">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <span>⭐</span>
-                        <span className="font-bold text-gray-900">
-                          {vendor.rating}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500">Rating</div>
-                    </div>
-                    <div className="w-px h-10 bg-gray-200"></div>
-                    <div className="text-center">
-                      <div className="font-bold text-gray-900 mb-1">
-                        {vendor.totalProducts}
-                      </div>
-                      <div className="text-xs text-gray-500">Items</div>
-                    </div>
-                    <div className="w-px h-10 bg-gray-200"></div>
-                    <div className="text-center">
-                      <div className="font-bold text-gray-900 mb-1">
-                        {vendor.totalSales.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-500">Sales</div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+              {!storesLoading && !error
+                ? topStores?.map((vendor) => (
+                    <StoreCard key={vendor.id} vendor={vendor} />
+                  ))
+                : "Loading Stores"}
             </div>
           </div>
         </section>
@@ -332,15 +267,11 @@ const Home = () => {
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
                   <span className="text-4xl">⚡</span>
-                  Today's Hot Deals
+                  Hot Deals Products
                 </h2>
                 <p className="text-gray-600 text-lg">
                   Limited time offers - Don't miss out!
                 </p>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-xl shadow-lg">
-                <div className="text-sm text-gray-600 mb-1">Ends in:</div>
-                <div className="text-2xl font-bold text-red-600">23:45:12</div>
               </div>
             </div>
 

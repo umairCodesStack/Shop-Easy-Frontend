@@ -14,7 +14,7 @@ const Products = () => {
     isLoading: loading,
     error,
   } = useGetProducts();
-  console.log("Fetched Products", allProducts);
+
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Get unique categories

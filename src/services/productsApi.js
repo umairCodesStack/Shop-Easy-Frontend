@@ -121,9 +121,7 @@ export async function getProductsByUserId(userId) {
     }
 
     const data = await response.json();
-    console.log("✅ Products by user ID data received:", data);
 
-    // OData returns results in 'value' array
     return data.value || data;
   } catch (error) {
     console.error("❌ Error fetching products by user ID:", error);

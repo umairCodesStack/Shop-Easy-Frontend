@@ -28,6 +28,8 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
 import ProtectedCheckoutRoute from "./pages/ProtectedCheckoutRoute";
 import Orders from "./pages/Orders";
+import StoresPage from "./pages/StoresPage";
+import AdminPage from "./pages/AdminPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +80,8 @@ function App() {
             <Route path="/register" element={<Signup />} />
             <Route path="/vendor/register" element={<VendorRegister />} />
             <Route path="/my-orders" element={<Orders />} />
+            <Route path="/stores" element={<StoresPage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route
               path="/checkout"
               element={

@@ -180,7 +180,7 @@ const Navbar = () => {
                         {userData.role}
                       </span>
                     </div>
-                    <Link
+                    {/* <Link
                       to="/profile"
                       onClick={() => setShowUserDropdown(false)}
                       className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
@@ -189,7 +189,7 @@ const Navbar = () => {
                         <span>👤</span>
                         <span>My Profile</span>
                       </div>
-                    </Link>
+                    </Link> */}
                     <Link
                       to="/my-orders"
                       onClick={() => setShowUserDropdown(false)}

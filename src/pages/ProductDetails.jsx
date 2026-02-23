@@ -202,7 +202,6 @@ const ProductDetails = () => {
       alert("Please select a color");
       return;
     }
-    console.log("Product Details", product);
 
     const productForCart = {
       id: product.id,
@@ -219,7 +218,6 @@ const ProductDetails = () => {
       storeLogo: product.storeLogoUrl,
       vendorId: product.vendorId,
     };
-    console.log("Product for cart", productForCart);
     addToCart(productForCart);
     // TODO: Implement actual cart functionality
   };
@@ -404,9 +402,9 @@ const ProductDetails = () => {
               <span className="font-semibold group-hover:underline">
                 {product.storeName}
               </span>
-              <span className="text-sm text-gray-500">
+              {/* <span className="text-sm text-gray-500">
                 ⭐ {product.storeRating}
-              </span>
+              </span> */}
             </Link>
 
             {/* Product Title */}
@@ -415,7 +413,7 @@ const ProductDetails = () => {
             </h1>
 
             {/* Rating & Reviews */}
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b">
+            {/* <div className="flex items-center gap-4 mb-6 pb-6 border-b">
               <div className="flex items-center gap-2">
                 <div className="flex">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -439,9 +437,8 @@ const ProductDetails = () => {
               <button className="text-primary-600 hover:underline font-medium">
                 {product.totalReviews} Reviews
               </button>
-              {/* <span className="text-gray-400">|</span> */}
-              {/* <span className="text-gray-600">{product.soldCount} Sold</span> */}
-            </div>
+              
+            </div> */}
 
             {/* Price */}
             <div className="mb-6">
@@ -594,13 +591,13 @@ const ProductDetails = () => {
                 <span className="text-2xl">🛒</span>
                 Add to Cart
               </button>
-              <button
+              {/* <button
                 onClick={handleBuyNow}
                 disabled={!product.inStock}
                 className="flex-1 bg-secondary-500 hover:bg-secondary-600 text-white py-4 rounded-lg font-bold text-lg transition-all duration-300 hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Buy Now
-              </button>
+              </button> */}
             </div>
 
             {/* Additional Info */}
@@ -650,7 +647,7 @@ const ProductDetails = () => {
             >
               Specifications
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab("reviews")}
               className={`flex-1 min-w-[150px] py-4 px-6 font-semibold transition-colors duration-300 ${
                 activeTab === "reviews"
@@ -659,7 +656,7 @@ const ProductDetails = () => {
               }`}
             >
               Reviews ({product.totalReviews})
-            </button>
+            </button> */}
           </div>
 
           {/* Tab Content */}
@@ -758,7 +755,7 @@ const ProductDetails = () => {
                 </div>
 
                 {/* Review List */}
-                <div className="space-y-6">
+                {/* <div className="space-y-6">
                   {product.reviews.map((review) => (
                     <div
                       key={review.id}
@@ -816,26 +813,19 @@ const ProductDetails = () => {
                       </div>
                     </div>
                   ))}
-                </div>
+                </div> */}
 
-                {/* Load More Reviews Button */}
-                <div className="text-center mt-8">
+                {/* <div className="text-center mt-8">
                   <button className="bg-primary-500 hover:bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg">
                     Load More Reviews
                   </button>
-                </div>
+                </div> */}
               </div>
             )}
           </div>
         </div>
 
         {/* Related Products */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            You May Also Like
-          </h2>
-          {/* You can add related products component here */}
-        </div>
       </div>
     </div>
   );

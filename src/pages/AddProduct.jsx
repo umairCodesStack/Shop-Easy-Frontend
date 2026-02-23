@@ -507,13 +507,7 @@ const AddProduct = () => {
         userId,
       };
 
-      console.log("Product Data:", productData);
-
       addProduct(productData);
-      //console.log("Product created successfully:", productData);
-
-      // Navigate to products list
-      //;
     } catch (error) {
       console.error("Error creating product:", error);
       setErrors({

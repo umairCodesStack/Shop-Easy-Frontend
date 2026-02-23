@@ -287,22 +287,11 @@ const VendorRegister = () => {
         banner: banner,
       };
 
-      console.log("📦 Store data:", {
-        ...storePayload,
-        logo: logo
-          ? `File: ${logo.name} (${(logo.size / 1024).toFixed(2)} KB)`
-          : "No logo",
-        banner: banner
-          ? `File: ${banner.name} (${(banner.size / 1024).toFixed(2)} KB)`
-          : "No banner",
-      });
-
       await createStore({
         ...storePayload,
         logo: logo,
         banner: banner,
       });
-      console.log("✅ Store created successfully");
       toast.success("Store created successfully! 🎉");
       navigate("/vendor/dashboard");
     } catch (error) {
@@ -326,9 +315,7 @@ const VendorRegister = () => {
     }
   };
 
-  const handleSocialSignup = (provider) => {
-    console.log(`Signup with ${provider}`);
-  };
+  const handleSocialSignup = (provider) => {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 flex items-center justify-center p-4 relative overflow-hidden">
@@ -433,7 +420,7 @@ const VendorRegister = () => {
               </div>
 
               {/* Social Signup Buttons */}
-              <div className="space-y-3 mb-6">
+              {/* <div className="space-y-3 mb-6">
                 <button
                   onClick={() => handleSocialSignup("google")}
                   className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-md"
@@ -464,7 +451,7 @@ const VendorRegister = () => {
                   </svg>
                   Continue with Google
                 </button>
-              </div>
+              </div> */}
 
               {/* Divider */}
               <div className="flex items-center gap-4 mb-6">

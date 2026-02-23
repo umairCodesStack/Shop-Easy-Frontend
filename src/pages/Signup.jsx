@@ -11,7 +11,7 @@ const Signup = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "customer", // Default role is customer
+    role: "Customer", // Default role is customer
     agreeToTerms: false,
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -94,8 +94,6 @@ const Signup = () => {
     if (!validateForm()) return;
 
     try {
-      console.log("Signup data:", formData);
-
       signup(formData);
     } catch (error) {
       setErrors({ submit: "Signup failed. Please try again." });
@@ -106,7 +104,6 @@ const Signup = () => {
   };
 
   const handleSocialSignup = (provider) => {
-    console.log(`Signup with ${provider}`);
     // Implement social signup logic here
   };
 
@@ -151,7 +148,7 @@ const Signup = () => {
             </div>
 
             {/* Social Signup Buttons */}
-            <div className="space-y-3 mb-6">
+            {/* <div className="space-y-3 mb-6">
               <button
                 onClick={() => handleSocialSignup("google")}
                 className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-md"
@@ -200,7 +197,7 @@ const Signup = () => {
                 </svg>
                 Sign up with Facebook
               </button>
-            </div>
+            </div> */}
 
             {/* Divider */}
             <div className="flex items-center gap-4 mb-6">

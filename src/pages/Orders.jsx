@@ -3,6 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { getUserData } from "../utils/jwtUtils";
 import useGetCustomerOrders from "../hooks/useCustomerOrders";
+import { requestForCancellation } from "../services/orderApi";
+import { useRequestCancellation } from "../hooks/useRequestCancellation";
+import toast from "react-hot-toast";
+import Navbar from "../components/common/Navbar";
 //import { cancelOrder } from "../services/orderApi";
 
 const Orders = () => {
@@ -45,6 +49,10 @@ const Orders = () => {
         return "bg-green-100 text-green-800 border-green-200";
       case "cancelled":
         return "bg-red-100 text-red-800 border-red-200";
+      case "cancellation requested":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "cancellation rejected":
+        return "bg-pink-100 text-pink-800 border-pink-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -77,28 +85,38 @@ const Orders = () => {
         return "✅";
       case "cancelled":
         return "❌";
+      case "cancellation requested":
+        return "🛑";
+      case "cancellation rejected":
+        return "⚠️";
       default:
         return "📦";
     }
   };
-
-  const handleCancelOrder = async () => {
+  const {
+    mutate: requestCancellation,
+    isLoading: cancelling,
+    error: errorCancelling,
+  } = useRequestCancellation();
+  const handleCancelOrder = () => {
     if (!cancelReason.trim()) {
-      alert("Please provide a cancellation reason");
+      toast.error("Please provide a cancellation reason");
       return;
     }
 
-    // try {
-    //   await cancelOrder(selectedOrder.id, cancelReason);
-    //   alert("Order cancelled successfully");
-    //   setShowCancelModal(false);
-    //   setCancelReason("");
-    //   setSelectedOrder(null);
-    //   refetch(); // Refresh orders list
-    // } catch (error) {
-    //   alert("Failed to cancel order. Please try again.");
-    //   console.error("Cancel order error:", error);
-    // }
+    try {
+      requestCancellation({
+        orderId: selectedOrder.id,
+        reason: cancelReason,
+      });
+      if (!errorCancelling && !cancelling) {
+        setShowCancelModal(false);
+        setCancelReason("");
+        setSelectedOrder(null);
+      }
+    } catch (error) {
+      console.error("Cancel order error:", error);
+    }
   };
 
   // Filter orders
@@ -146,6 +164,13 @@ const Orders = () => {
     delivered:
       orders?.filter((o) => o.status?.toLowerCase() === "delivered").length ||
       0,
+    cancellationRequested:
+      orders?.filter(
+        (o) => o.status?.toLowerCase() === "cancellation requested",
+      ).length || 0,
+    cancellationRejected:
+      orders?.filter((o) => o.status?.toLowerCase() === "cancellation rejected")
+        .length || 0,
   };
 
   if (isLoading) {
@@ -187,6 +212,7 @@ const Orders = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navbar />
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white py-12">
         <div className="container mx-auto px-4">
@@ -204,7 +230,7 @@ const Orders = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
           <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-3xl mb-2">📦</div>
             <p className="text-2xl font-bold text-gray-900">
@@ -239,6 +265,20 @@ const Orders = () => {
               {orderStats.delivered}
             </p>
             <p className="text-sm text-gray-600">Delivered</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-3xl mb-2">🛑</div>
+            <p className="text-2xl font-bold text-orange-600">
+              {orderStats.cancellationRequested}
+            </p>
+            <p className="text-sm text-gray-600">Cancel Pending</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-3xl mb-2">⚠️</div>
+            <p className="text-2xl font-bold text-pink-600">
+              {orderStats.cancellationRejected}
+            </p>
+            <p className="text-sm text-gray-600">Cancel Rejected</p>
           </div>
         </div>
 
@@ -280,6 +320,12 @@ const Orders = () => {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="cancellation requested">
+                  Cancellation Requested
+                </option>
+                <option value="cancellation rejected">
+                  Cancellation Rejected
+                </option>
               </select>
             </div>
           </div>
@@ -426,10 +472,37 @@ const Orders = () => {
                   {order.trackingNumber && (
                     <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
                       <p className="text-sm font-semibold text-gray-700 mb-1">
-                        ���� Tracking Number
+                        🚚 Tracking Number
                       </p>
                       <p className="text-sm font-mono text-purple-600 font-semibold">
                         {order.trackingNumber}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Cancellation Request Notice */}
+                  {order.status?.toLowerCase() === "cancellation requested" && (
+                    <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <p className="text-sm font-semibold text-orange-700 mb-1">
+                        🛑 Cancellation Pending
+                      </p>
+                      <p className="text-sm text-orange-600">
+                        Your cancellation request is being reviewed by the
+                        seller. You will be notified once a decision is made.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Cancellation Rejected Notice */}
+                  {order.status?.toLowerCase() === "cancellation rejected" && (
+                    <div className="mt-4 p-4 bg-pink-50 rounded-lg border border-pink-200">
+                      <p className="text-sm font-semibold text-pink-700 mb-1">
+                        ⚠️ Cancellation Rejected
+                      </p>
+                      <p className="text-sm text-pink-600">
+                        Your cancellation request was rejected by the seller.
+                        The order will proceed as normal. Contact the seller for
+                        more information.
                       </p>
                     </div>
                   )}
@@ -456,15 +529,20 @@ const Orders = () => {
                       )}
 
                     {(order.status?.toLowerCase() === "pending" ||
-                      order.status?.toLowerCase() === "processing") && (
+                      order.status?.toLowerCase() === "processing" ||
+                      order.status?.toLowerCase() ===
+                        "cancellation rejected") && (
                       <button
+                        disabled={cancelling}
                         onClick={() => {
                           setSelectedOrder(order);
                           setShowCancelModal(true);
                         }}
                         className="flex-1 min-w-[150px] bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors duration-300"
                       >
-                        Cancel Order
+                        {order.status?.toLowerCase() === "cancellation rejected"
+                          ? "Request Cancellation Again"
+                          : "Cancel Order"}
                       </button>
                     )}
 
@@ -567,10 +645,17 @@ const Orders = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Cancel Order
+              {!cancelling
+                ? selectedOrder.status?.toLowerCase() ===
+                  "cancellation rejected"
+                  ? "Request Cancellation Again"
+                  : "Cancel Order"
+                : "Sending Cancellation Request"}
             </h2>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to cancel order{" "}
+              {selectedOrder.status?.toLowerCase() === "cancellation rejected"
+                ? "Your previous cancellation request was rejected. Would you like to request cancellation again for order "
+                : "Are you sure you want to cancel order "}
               <span className="font-semibold">ORD-{selectedOrder.id}</span>?
             </p>
 
@@ -602,7 +687,9 @@ const Orders = () => {
                 onClick={handleCancelOrder}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition-colors"
               >
-                Cancel Order
+                {selectedOrder.status?.toLowerCase() === "cancellation rejected"
+                  ? "Submit Request"
+                  : "Cancel Order"}
               </button>
             </div>
           </div>

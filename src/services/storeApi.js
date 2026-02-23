@@ -306,10 +306,39 @@ export async function updateStore(storeData) {
     }
 
     const data = await response.json().catch(() => ({ success: true }));
-    console.log("✅ Store updated successfully:", data);
     return data;
   } catch (error) {
     console.error("❌ updateStore error:", error);
     throw error;
   }
+}
+export async function getStoreCustomers(vendorId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/Order/GetCustomers?vendorId=${vendorId}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to fetch store: ${response.status}`);
+  }
+  const data = await response.json();
+  return data;
+}
+export async function getAllStores() {
+  const response = await fetch(`${API_BASE_URL}/api/Store/getAllStores`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch store: ${response.status}`);
+  }
+  const data = await response.json();
+  console.log("All Stores", data);
+  return data;
 }

@@ -327,14 +327,6 @@ const EditProduct = () => {
         newColors,
       };
 
-      console.log("Updated Product Data:", updatedData);
-      console.log("Images to remove:", imagesToRemove);
-      console.log("New images to upload:", newImages);
-      console.log("Sizes to remove:", sizesToRemove);
-      console.log("New sizes to add:", newSizes);
-      console.log("Colors to remove:", colorsToRemove);
-      console.log("New colors to add:", newColors);
-
       // Call your update API here
       await updateProduct(id, updatedData);
 

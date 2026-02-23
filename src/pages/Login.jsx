@@ -50,12 +50,10 @@ const Login = () => {
     e.preventDefault();
 
     if (!validateForm()) return;
-    console.log("Form data is valid, proceeding to login:", formData);
     login(formData);
   };
 
   const handleSocialLogin = (provider) => {
-    console.log(`Login with ${provider}`);
     // Implement social login logic here
   };
 
@@ -99,7 +97,7 @@ const Login = () => {
           </div>
 
           {/* Social Login Buttons */}
-          <div className="space-y-3 mb-6">
+          {/* <div className="space-y-3 mb-6">
             <button
               onClick={() => handleSocialLogin("google")}
               className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-md"
@@ -148,7 +146,7 @@ const Login = () => {
               </svg>
               Continue with Facebook
             </button>
-          </div>
+          </div> */}
 
           {/* Divider */}
           <div className="flex items-center gap-4 mb-6">

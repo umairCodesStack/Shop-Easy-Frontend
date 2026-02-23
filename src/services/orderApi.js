@@ -25,17 +25,12 @@ export async function createOrder(orderData) {
 }
 export async function getOrdersByVendorId(vendorId) {
   try {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error("You are not Authorized to Perform this Action");
-    }
     const response = await fetch(
       `${API_BASE_URL}/api/Order/GetOrders?vendorId=${vendorId}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
       },
     );
@@ -49,7 +44,7 @@ export const getOrdersByCustomerId = async (customerId) => {
   try {
     const token = getAuthToken();
     const response = await fetch(
-      `${API_BASE_URL}/Order/GetOrderSummary?userId=${customerId}`,
+      `${API_BASE_URL}/api/Order/GetOrderSummary?userId=${customerId}`,
       {
         method: "GET",
         headers: {
@@ -70,3 +65,50 @@ export const getOrdersByCustomerId = async (customerId) => {
     throw error;
   }
 };
+export async function requestForCancellation(orderId, reason) {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error("You are not authorized to perform this action");
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/Order/RequestOrderCancellation?orderId=${orderId}&reason=${encodeURIComponent(reason)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to request cancellation");
+  }
+}
+export async function updateOrderStatus(orderId, status) {
+  const token = getAuthToken();
+  console.log("New Status to set", status);
+  if (!token) {
+    throw new Error("You are not authorized to perform this action");
+  }
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/Order/UpdateOrderStatus?orderId=${orderId}&status=${status}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    return response;
+    //const data = response.json();
+    //alert(data);
+    //return data;
+  } catch (e) {
+    console.error(e.message);
+  }
+}

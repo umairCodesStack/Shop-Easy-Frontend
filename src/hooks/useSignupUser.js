@@ -22,7 +22,7 @@ export function useSignupUser() {
       }
 
       toast.success("Signup successful! Please log in.");
-      navigate("/");
+      navigate("/login");
     },
   });
 
