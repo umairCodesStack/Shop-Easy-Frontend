@@ -113,15 +113,15 @@ export default function VendorNavbar({ toggleSidebar, userData, storeData }) {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown((open) => !open)}
-                className="hidden sm:flex items-center gap-2 bg-gray-100 px-3 sm:px-4 py-2 rounded-full focus:outline-none"
+                className="flex items-center gap-2 bg-gray-100 px-2 sm:px-4 py-2 rounded-full focus:outline-none"
                 aria-label="Open user menu"
               >
                 <Avatar src={logoUrl} alt={name} size="md" fallbackIcon="👤" />
-                <span className="text-sm font-semibold max-w-[100px] sm:max-w-[120px] truncate">
+                <span className="hidden sm:inline text-sm font-semibold max-w-[100px] sm:max-w-[120px] truncate">
                   {name}
                 </span>
                 <svg
-                  className={`w-4 h-4 ml-2 text-gray-600 transition-transform ${
+                  className={`w-4 h-4 ml-1 text-gray-600 transition-transform ${
                     showDropdown ? "rotate-180" : ""
                   }`}
                   fill="none"
