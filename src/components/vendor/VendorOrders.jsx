@@ -27,6 +27,8 @@ const VendorOrders = () => {
     switch (normalizedStatus) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "confirmed":
+        return "bg-teal-100 text-teal-800 border-teal-200";
       case "processing":
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "shipped":
@@ -63,6 +65,8 @@ const VendorOrders = () => {
     switch (normalizedStatus) {
       case "pending":
         return "⏳";
+      case "confirmed":
+        return "✔️";
       case "processing":
         return "⚙️";
       case "shipped":
@@ -168,6 +172,9 @@ const VendorOrders = () => {
     total: orders?.length || 0,
     pending:
       orders?.filter((o) => o.status?.toLowerCase() === "pending").length || 0,
+    confirmed:
+      orders?.filter((o) => o.status?.toLowerCase() === "confirmed").length ||
+      0,
     processing:
       orders?.filter((o) => o.status?.toLowerCase() === "processing").length ||
       0,
@@ -233,7 +240,7 @@ const VendorOrders = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-8">
           <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">📦</div>
             <p className="text-2xl font-bold text-gray-900">
@@ -247,6 +254,13 @@ const VendorOrders = () => {
               {orderStats.pending}
             </p>
             <p className="text-xs text-gray-600">Pending</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-2xl mb-2">✔️</div>
+            <p className="text-2xl font-bold text-teal-600">
+              {orderStats.confirmed}
+            </p>
+            <p className="text-xs text-gray-600">Confirmed</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
             <div className="text-2xl mb-2">⚙️</div>
@@ -326,6 +340,7 @@ const VendorOrders = () => {
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="processing">Processing</option>
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
@@ -593,7 +608,7 @@ const VendorOrders = () => {
                     >
                       Update Status
                     </button>
-                    <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition-colors">
+                    {/* <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition-colors">
                       Print Invoice
                     </button>
                     <button className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors">
@@ -601,7 +616,7 @@ const VendorOrders = () => {
                     </button>
                     <button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg font-semibold transition-colors">
                       View Details
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </div>
@@ -725,6 +740,7 @@ const VendorOrders = () => {
             <div className="space-y-3 mb-6">
               {[
                 "pending",
+                "confirmed",
                 "processing",
                 "shipped",
                 "delivered",
@@ -760,14 +776,18 @@ const VendorOrders = () => {
                           ? "bg-red-50 hover:bg-red-100 text-red-600 border-2 border-red-200"
                           : status === "reject cancellation"
                             ? "bg-pink-50 hover:bg-pink-100 text-pink-600 border-2 border-pink-200"
-                            : "bg-orange-50 hover:bg-orange-100 text-orange-600 border-2 border-orange-200"
+                            : status === "confirmed"
+                              ? "bg-teal-50 hover:bg-teal-100 text-teal-600 border-2 border-teal-200"
+                              : "bg-orange-50 hover:bg-orange-100 text-orange-600 border-2 border-orange-200"
                     }`}
                   >
                     {status === "cancell"
                       ? "✅ Approve Cancellation"
                       : status === "reject cancellation"
                         ? "❌ Reject Cancellation"
-                        : status.charAt(0).toUpperCase() + status.slice(1)}
+                        : status === "confirmed"
+                          ? "✔️ Confirmed"
+                          : status.charAt(0).toUpperCase() + status.slice(1)}
                     {selectedOrder.status?.toLowerCase() === status &&
                       " (Current)"}
                   </button>

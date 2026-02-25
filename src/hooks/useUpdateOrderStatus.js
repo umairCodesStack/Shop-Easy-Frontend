@@ -23,6 +23,9 @@ export function useUpdateOrderStatus() {
       queryClient.refetchQueries({
         queryKey: ["customerOrders"],
       });
+      queryClient.refetchQueries({
+        queryKey: ["storeProducts"],
+      });
     },
   });
   return { mutate, isLoading, error };
