@@ -35,7 +35,7 @@ const CheckoutPage = () => {
     city: "",
     state: "",
     zipCode: "",
-    country: "USA",
+    country: "Pakistan",
   });
 
   const [paymentMethod] = useState("cod"); // Only COD available
@@ -387,6 +387,7 @@ const CheckoutPage = () => {
                       <option value="Canada">Canada</option>
                       <option value="UK">United Kingdom</option>
                       <option value="Australia">Australia</option>
+                      <option value="Pakistan">Pakistan</option>
                     </select>
                   </div>
                 </div>
