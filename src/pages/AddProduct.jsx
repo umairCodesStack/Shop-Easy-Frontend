@@ -506,7 +506,7 @@ const AddProduct = () => {
         storeId: storeData ? storeData.id : null,
         userId,
       };
-
+      console.log("Adding product:", isAddingProduct);
       addProduct(productData);
     } catch (error) {
       console.error("Error creating product:", error);
@@ -1057,10 +1057,10 @@ const AddProduct = () => {
                 </Link>
                 <button
                   type="submit"
-                  disabled={isAddingProduct}
+                  disabled={isLoading || StoreIsLoading || isAddingProduct}
                   className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isAddingProduct ? (
+                  {isLoading || StoreIsLoading || isAddingProduct ? (
                     <>
                       <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                       Adding Product...

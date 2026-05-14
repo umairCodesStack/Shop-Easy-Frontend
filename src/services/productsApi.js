@@ -23,7 +23,7 @@ export default async function getProducts() {
 }
 
 export async function getTrendingProducts() {
-  const url = `${API_BASE_URL}/odata/Product?$filter=Rating gt 4.5&$orderby=Rating desc&$top=10`;
+  const url = `${API_BASE_URL}/odata/Product?$filter=Tag eq 'Trending'&$orderby=Rating desc&$top=10`;
 
   try {
     console.log("Fetching trending products:", url);
